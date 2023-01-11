@@ -4,10 +4,7 @@ mod test {
 
     use serial_test::serial;
 
-    use crate::test::{
-        assert::Assert,
-        test_common::test::{TestCommon, I_EVENTS},
-    };
+    use crate::test::{assert::Assert, test_runner::test::TestRunner};
 
     #[test]
     #[serial]
@@ -78,16 +75,15 @@ mod test {
     }
 
     fn run_numeric_tests(data_type: String, test_values: Vec<String>, check_values: Vec<u64>) {
-        TestCommon::before_dml();
-        let prepare_sqls = vec![TestCommon::get_create_table_sql_with_one_field(data_type)];
-        TestCommon::execute_insert_sqls_and_get_binlogs(prepare_sqls, test_values);
-        unsafe {
-            for i in 0..check_values.len() {
-                Assert::assert_unsigned_numeric_eq(
-                    &I_EVENTS[i].rows[0].column_values[0],
-                    check_values[i],
-                );
-            }
+        let mut runner = TestRunner::new();
+        let prepare_sqls = vec![runner.get_create_table_sql_with_one_field(data_type)];
+        runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, test_values);
+
+        for i in 0..check_values.len() {
+            Assert::assert_unsigned_numeric_eq(
+                &runner.insert_events[i].rows[0].column_values[0],
+                check_values[i],
+            );
         }
     }
 }

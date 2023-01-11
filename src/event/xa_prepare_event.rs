@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{binlog_error::BinlogError, ext::cursor_ext::CursorExt};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct XaPrepareEvent {
     pub one_phase: bool,
     pub format_id: u32,

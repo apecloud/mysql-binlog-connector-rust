@@ -9,7 +9,7 @@ use crate::{binlog_error::BinlogError, binlog_parser::BinlogParser, ext::cursor_
 
 use super::{event_data::EventData, event_header::EventHeader};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct TransactionPayloadEvent {
     pub uncompressed_size: u32,
     pub uncompressed_events: Vec<(EventHeader, EventData)>,

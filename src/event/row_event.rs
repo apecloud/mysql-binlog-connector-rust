@@ -10,9 +10,9 @@ use crate::{
 
 use super::table_map_event::TableMapEvent;
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct RowEvent {
-    pub column_values: Vec<Option<ColumnValue>>,
+    pub column_values: Vec<ColumnValue>,
 }
 
 impl RowEvent {
@@ -27,13 +27,13 @@ impl RowEvent {
         for i in 0..table_map_event.column_types.len() {
             if !included_columns[i] {
                 skipped_column_count += 1;
-                column_values.push(None);
+                column_values.push(ColumnValue::None);
                 continue;
             }
 
             let index = i - skipped_column_count;
             if null_columns[index] {
-                column_values.push(None);
+                column_values.push(ColumnValue::None);
                 continue;
             }
 
@@ -52,7 +52,7 @@ impl RowEvent {
                 column_meta,
                 column_length,
             )?;
-            column_values.push(Some(col_value));
+            column_values.push(col_value);
         }
 
         Ok(Self { column_values })

@@ -4,8 +4,9 @@ use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 use serde::{Deserialize, Serialize};
 use std::io::{Cursor, Read};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub enum ColumnValue {
+    None,
     // A 8 bit signed integer
     Tiny(i8),
     // A 8 bit unsigned integer

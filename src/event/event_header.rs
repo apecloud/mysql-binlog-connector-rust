@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{binlog_error::BinlogError, constants};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct EventHeader {
     pub timestamp: u32,
     pub event_type: u8,

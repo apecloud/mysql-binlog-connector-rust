@@ -4,7 +4,7 @@ use std::io::{Cursor, Seek, SeekFrom};
 
 use crate::{binlog_error::BinlogError, ext::cursor_ext::CursorExt};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct RowsQueryEvent {
     pub query: String,
 }

@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{binlog_error::BinlogError, ext::cursor_ext::CursorExt};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct QueryEvent {
     pub thread_id: u32,
     pub exec_time: u32,

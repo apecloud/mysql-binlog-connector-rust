@@ -1,19 +1,16 @@
+#[cfg(test)]
 mod test {
     use serial_test::serial;
 
-    use crate::test::{
-        assert::Assert,
-        test_common::test::{TestCommon, I_EVENTS},
-    };
+    use crate::test::{assert::Assert, test_runner::test::TestRunner};
 
     #[test]
     #[serial]
     fn test_datetime6() {
-        TestCommon::before_dml();
+        let mut runner = TestRunner::new();
         // https://dev.mysql.com/doc/refman/8.0/en/datetime.html
-        let prepare_sqls = vec![TestCommon::get_create_table_sql_with_one_field(
-            "DATETIME(6)".to_string(),
-        )];
+        let prepare_sqls =
+            vec![runner.get_create_table_sql_with_one_field("DATETIME(6)".to_string())];
         // With the fractional part included, the format for these values is 'YYYY-MM-DD hh:mm:ss[.fraction]',
         // the range for DATETIME values is '1000-01-01 00:00:00.000000' to '9999-12-31 23:59:59.999999'
         let values = vec!["('1000-01-01 00:00:00.000000'),
@@ -31,7 +28,7 @@ mod test {
                     ('2022-01-02 03:04:05.001234'),
                     ('2022-01-02 03:04:05.012345')"
             .to_string()];
-        TestCommon::execute_insert_sqls_and_get_binlogs(prepare_sqls, values);
+        runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, values);
 
         let check_values = [
             "1000-01-01 00:00:00.000000".to_string(),
@@ -50,24 +47,21 @@ mod test {
             "2022-01-02 03:04:05.012345".to_string(),
         ];
 
-        unsafe {
-            assert_eq!(I_EVENTS[0].rows.len(), check_values.len());
-            for i in 0..check_values.len() {
-                Assert::assert_string_eq(
-                    &I_EVENTS[0].rows[i].column_values[0],
-                    check_values[i].clone(),
-                );
-            }
+        assert_eq!(runner.insert_events[0].rows.len(), check_values.len());
+        for i in 0..check_values.len() {
+            Assert::assert_string_eq(
+                &runner.insert_events[0].rows[i].column_values[0],
+                check_values[i].clone(),
+            );
         }
     }
 
     #[test]
     #[serial]
     fn test_datetime3() {
-        TestCommon::before_dml();
-        let prepare_sqls = vec![TestCommon::get_create_table_sql_with_one_field(
-            "DATETIME(3)".to_string(),
-        )];
+        let mut runner = TestRunner::new();
+        let prepare_sqls =
+            vec![runner.get_create_table_sql_with_one_field("DATETIME(3)".to_string())];
         let values = vec!["('1000-01-01 00:00:00.000'),
                     ('9999-12-31 23:59:59.999'),
                     ('2022-01-02 03:04:05.0'),
@@ -77,7 +71,7 @@ mod test {
                     ('2022-01-02 03:04:05.001'),
                     ('2022-01-02 03:04:05.012')"
             .to_string()];
-        TestCommon::execute_insert_sqls_and_get_binlogs(prepare_sqls, values);
+        runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, values);
 
         let check_values = [
             "1000-01-01 00:00:00.000000".to_string(),
@@ -90,51 +84,43 @@ mod test {
             "2022-01-02 03:04:05.012000".to_string(),
         ];
 
-        unsafe {
-            assert_eq!(I_EVENTS[0].rows.len(), check_values.len());
-            for i in 0..check_values.len() {
-                Assert::assert_string_eq(
-                    &I_EVENTS[0].rows[i].column_values[0],
-                    check_values[i].clone(),
-                );
-            }
+        assert_eq!(runner.insert_events[0].rows.len(), check_values.len());
+        for i in 0..check_values.len() {
+            Assert::assert_string_eq(
+                &runner.insert_events[0].rows[i].column_values[0],
+                check_values[i].clone(),
+            );
         }
     }
 
     #[test]
     #[serial]
     fn test_datetime() {
-        TestCommon::before_dml();
+        let mut runner = TestRunner::new();
         // https://dev.mysql.com/doc/refman/8.0/en/datetime.html
-        let prepare_sqls = vec![TestCommon::get_create_table_sql_with_one_field(
-            "DATETIME".to_string(),
-        )];
+        let prepare_sqls = vec![runner.get_create_table_sql_with_one_field("DATETIME".to_string())];
         let values = vec!["('1000-01-01 00:00:00.000000'),('9999-12-31 23:59:59')".to_string()];
-        TestCommon::execute_insert_sqls_and_get_binlogs(prepare_sqls, values);
+        runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, values);
 
         let check_values = [
             "1000-01-01 00:00:00.000000".to_string(),
             "9999-12-31 23:59:59.000000".to_string(),
         ];
 
-        unsafe {
-            assert_eq!(I_EVENTS[0].rows.len(), check_values.len());
-            for i in 0..check_values.len() {
-                Assert::assert_string_eq(
-                    &I_EVENTS[0].rows[i].column_values[0],
-                    check_values[i].clone(),
-                );
-            }
+        assert_eq!(runner.insert_events[0].rows.len(), check_values.len());
+        for i in 0..check_values.len() {
+            Assert::assert_string_eq(
+                &runner.insert_events[0].rows[i].column_values[0],
+                check_values[i].clone(),
+            );
         }
     }
 
     #[test]
     #[serial]
     fn test_time6() {
-        TestCommon::before_dml();
-        let prepare_sqls = vec![TestCommon::get_create_table_sql_with_one_field(
-            "TIME(6)".to_string(),
-        )];
+        let mut runner = TestRunner::new();
+        let prepare_sqls = vec![runner.get_create_table_sql_with_one_field("TIME(6)".to_string())];
         let values = vec!["('00:00:00.000000'),
                     ('23:59:59.999999'),
                     ('03:04:05.0'),
@@ -150,7 +136,7 @@ mod test {
                     ('03:04:05.001234'),
                     ('03:04:05.012345')"
             .to_string()];
-        TestCommon::execute_insert_sqls_and_get_binlogs(prepare_sqls, values);
+        runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, values);
 
         let check_values = [
             "00:00:00.000000".to_string(),
@@ -169,24 +155,20 @@ mod test {
             "03:04:05.012345".to_string(),
         ];
 
-        unsafe {
-            assert_eq!(I_EVENTS[0].rows.len(), check_values.len());
-            for i in 0..check_values.len() {
-                Assert::assert_string_eq(
-                    &I_EVENTS[0].rows[i].column_values[0],
-                    check_values[i].clone(),
-                );
-            }
+        assert_eq!(runner.insert_events[0].rows.len(), check_values.len());
+        for i in 0..check_values.len() {
+            Assert::assert_string_eq(
+                &runner.insert_events[0].rows[i].column_values[0],
+                check_values[i].clone(),
+            );
         }
     }
 
     #[test]
     #[serial]
     fn test_time3() {
-        TestCommon::before_dml();
-        let prepare_sqls = vec![TestCommon::get_create_table_sql_with_one_field(
-            "TIME(3)".to_string(),
-        )];
+        let mut runner = TestRunner::new();
+        let prepare_sqls = vec![runner.get_create_table_sql_with_one_field("TIME(3)".to_string())];
         let values = vec!["('00:00:00.000'),
                     ('23:59:59.999'),
                     ('03:04:05.0'),
@@ -196,7 +178,7 @@ mod test {
                     ('03:04:05.001'),
                     ('03:04:05.012')"
             .to_string()];
-        TestCommon::execute_insert_sqls_and_get_binlogs(prepare_sqls, values);
+        runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, values);
 
         let check_values = [
             "00:00:00.000000".to_string(),
@@ -209,88 +191,80 @@ mod test {
             "03:04:05.012000".to_string(),
         ];
 
-        unsafe {
-            assert_eq!(I_EVENTS[0].rows.len(), check_values.len());
-            for i in 0..check_values.len() {
-                Assert::assert_string_eq(
-                    &I_EVENTS[0].rows[i].column_values[0],
-                    check_values[i].clone(),
-                );
-            }
+        assert_eq!(runner.insert_events[0].rows.len(), check_values.len());
+        for i in 0..check_values.len() {
+            Assert::assert_string_eq(
+                &runner.insert_events[0].rows[i].column_values[0],
+                check_values[i].clone(),
+            );
         }
     }
 
     #[test]
     #[serial]
     fn test_time() {
-        TestCommon::before_dml();
-        let prepare_sqls = vec![TestCommon::get_create_table_sql_with_one_field(
-            "TIME".to_string(),
-        )];
+        let mut runner = TestRunner::new();
+        let prepare_sqls = vec![runner.get_create_table_sql_with_one_field("TIME".to_string())];
         let values = vec!["('00:00:00'),('23:59:59')".to_string()];
-        TestCommon::execute_insert_sqls_and_get_binlogs(prepare_sqls, values);
+        runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, values);
         // the db values are actual: ["00:00:00", "23:59:59"]
         // the parsed binlog values are ["00:00:00.000000", "23:59:59.000000"]
         // we keep the 6 pending zeros since we don't know the field precision when parsing binlog
         let check_values = ["00:00:00.000000".to_string(), "23:59:59.000000".to_string()];
-        unsafe {
-            assert_eq!(I_EVENTS[0].rows.len(), check_values.len());
-            for i in 0..check_values.len() {
-                Assert::assert_string_eq(
-                    &I_EVENTS[0].rows[i].column_values[0],
-                    check_values[i].clone(),
-                );
-            }
+
+        assert_eq!(runner.insert_events[0].rows.len(), check_values.len());
+        for i in 0..check_values.len() {
+            Assert::assert_string_eq(
+                &runner.insert_events[0].rows[i].column_values[0],
+                check_values[i].clone(),
+            );
         }
     }
 
     #[test]
     #[serial]
     fn test_date() {
-        TestCommon::before_dml();
-        let prepare_sqls = vec![TestCommon::get_create_table_sql_with_one_field(
-            "DATE".to_string(),
-        )];
+        let mut runner = TestRunner::new();
+        let prepare_sqls = vec![runner.get_create_table_sql_with_one_field("DATE".to_string())];
         let values = vec!["('1000-01-01'),('9999-12-31')".to_string()];
-        TestCommon::execute_insert_sqls_and_get_binlogs(prepare_sqls, values);
+        runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, values);
 
         let check_values = ["1000-01-01".to_string(), "9999-12-31".to_string()];
-        unsafe {
-            assert_eq!(I_EVENTS[0].rows.len(), check_values.len());
-            for i in 0..check_values.len() {
-                Assert::assert_string_eq(
-                    &I_EVENTS[0].rows[i].column_values[0],
-                    check_values[i].clone(),
-                );
-            }
+
+        assert_eq!(runner.insert_events[0].rows.len(), check_values.len());
+        for i in 0..check_values.len() {
+            Assert::assert_string_eq(
+                &runner.insert_events[0].rows[i].column_values[0],
+                check_values[i].clone(),
+            );
         }
     }
 
     #[test]
     #[serial]
     fn test_year() {
-        TestCommon::before_dml();
-        let prepare_sqls = vec![TestCommon::get_create_table_sql_with_one_field(
-            "YEAR".to_string(),
-        )];
+        let mut runner = TestRunner::new();
+        let prepare_sqls = vec![runner.get_create_table_sql_with_one_field("YEAR".to_string())];
         let values = vec!["('1901'),('2155')".to_string()];
-        TestCommon::execute_insert_sqls_and_get_binlogs(prepare_sqls, values);
+        runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, values);
 
         let check_values = [1901, 2155];
-        unsafe {
-            assert_eq!(I_EVENTS[0].rows.len(), check_values.len());
-            for i in 0..check_values.len() {
-                Assert::assert_numeric_eq(&I_EVENTS[0].rows[i].column_values[0], check_values[i]);
-            }
+
+        assert_eq!(runner.insert_events[0].rows.len(), check_values.len());
+        for i in 0..check_values.len() {
+            Assert::assert_numeric_eq(
+                &runner.insert_events[0].rows[i].column_values[0],
+                check_values[i],
+            );
         }
     }
 
     #[test]
     #[serial]
     fn test_timestamp6() {
-        TestCommon::before_dml();
+        let mut runner = TestRunner::new();
         let prepare_sqls = vec![
-            TestCommon::get_create_table_sql_with_one_field("TIMESTAMP(6)".to_string()),
+            runner.get_create_table_sql_with_one_field("TIMESTAMP(6)".to_string()),
             "SET @@session.time_zone='UTC'".to_string(),
         ];
         // refer: https://dev.mysql.com/doc/refman/8.0/en/datetime.html
@@ -311,7 +285,7 @@ mod test {
                     ('2022-01-02 03:04:05.001234'),
                     ('2022-01-02 03:04:05.012345')"
             .to_string()];
-        TestCommon::execute_insert_sqls_and_get_binlogs(prepare_sqls, values);
+        runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, values);
 
         // MySQL converts TIMESTAMP values from the current time zone to UTC for storage,
         // and back from UTC to the current time zone for retrieval.
@@ -337,20 +311,21 @@ mod test {
             test_utc_timestamp + 012345,
         ];
 
-        unsafe {
-            assert_eq!(I_EVENTS[0].rows.len(), check_values.len());
-            for i in 0..check_values.len() {
-                Assert::assert_timestamp_eq(&I_EVENTS[0].rows[i].column_values[0], check_values[i]);
-            }
+        assert_eq!(runner.insert_events[0].rows.len(), check_values.len());
+        for i in 0..check_values.len() {
+            Assert::assert_timestamp_eq(
+                &runner.insert_events[0].rows[i].column_values[0],
+                check_values[i],
+            );
         }
     }
 
     #[test]
     #[serial]
     fn test_timestamp3() {
-        TestCommon::before_dml();
+        let mut runner = TestRunner::new();
         let prepare_sqls = vec![
-            TestCommon::get_create_table_sql_with_one_field("TIMESTAMP(3)".to_string()),
+            runner.get_create_table_sql_with_one_field("TIMESTAMP(3)".to_string()),
             "SET @@session.time_zone='UTC'".to_string(),
         ];
 
@@ -363,7 +338,7 @@ mod test {
                     ('2022-01-02 03:04:05.001'),
                     ('2022-01-02 03:04:05.012')"
             .to_string()];
-        TestCommon::execute_insert_sqls_and_get_binlogs(prepare_sqls, values);
+        runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, values);
 
         let micros_per_second = 1000000u64;
         let test_utc_timestamp = 1641092645 * micros_per_second;
@@ -378,20 +353,21 @@ mod test {
             test_utc_timestamp + 12000,
         ];
 
-        unsafe {
-            assert_eq!(I_EVENTS[0].rows.len(), check_values.len());
-            for i in 0..check_values.len() {
-                Assert::assert_timestamp_eq(&I_EVENTS[0].rows[i].column_values[0], check_values[i]);
-            }
+        assert_eq!(runner.insert_events[0].rows.len(), check_values.len());
+        for i in 0..check_values.len() {
+            Assert::assert_timestamp_eq(
+                &runner.insert_events[0].rows[i].column_values[0],
+                check_values[i],
+            );
         }
     }
 
     #[test]
     #[serial]
     fn test_timestamp() {
-        TestCommon::before_dml();
+        let mut runner = TestRunner::new();
         let prepare_sqls = vec![
-            TestCommon::get_create_table_sql_with_one_field("TIMESTAMP".to_string()),
+            runner.get_create_table_sql_with_one_field("TIMESTAMP".to_string()),
             "SET @@session.time_zone='UTC'".to_string(),
         ];
 
@@ -406,7 +382,7 @@ mod test {
                     ('2022-01-02 03:04:05.001'),
                     ('2022-01-02 03:04:05.012')"
             .to_string()];
-        TestCommon::execute_insert_sqls_and_get_binlogs(prepare_sqls, values);
+        runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, values);
 
         let micros_per_second = 1000000u64;
         let test_utc_timestamp = 1641092645 * micros_per_second;
@@ -421,11 +397,12 @@ mod test {
             test_utc_timestamp,
         ];
 
-        unsafe {
-            assert_eq!(I_EVENTS[0].rows.len(), check_values.len());
-            for i in 0..check_values.len() {
-                Assert::assert_timestamp_eq(&I_EVENTS[0].rows[i].column_values[0], check_values[i]);
-            }
+        assert_eq!(runner.insert_events[0].rows.len(), check_values.len());
+        for i in 0..check_values.len() {
+            Assert::assert_timestamp_eq(
+                &runner.insert_events[0].rows[i].column_values[0],
+                check_values[i],
+            );
         }
     }
 }

@@ -1,3 +1,4 @@
+#[cfg(test)]
 mod test {
     use std::{collections::HashMap, env, fs::File};
 

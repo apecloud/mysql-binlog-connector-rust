@@ -1,14 +1,15 @@
+#[cfg(test)]
 pub mod test {
-    use crate::{event::row_event::RowEvent, test::{assert::Assert, test_common::test::{DB, TB}}};
+    use crate::{event::row_event::RowEvent, test::{assert::Assert}};
 
     pub struct DmlTestCommon {}
 
     impl DmlTestCommon {
-        pub fn get_create_table_sql_with_all_types() -> String {
+        pub fn get_create_table_sql_with_all_types(db: &str, tb: &str) -> String {
             format!(
                 "CREATE TABLE {}.{} (f_0 {}, f_1 {}, f_2 {}, f_3 {}, f_4 {}, f_5 {}, f_6 {}, f_7 {}, f_8 {}, f_9 {}, f_10 {}, f_11 {}, f_12 {}, f_13 {}, f_14 {}, f_15 {}, f_16 {}, f_17 {}, f_18 {}, f_19 {}, f_20 {}, f_21 {}, f_22 {}, f_23 {}, f_24 {}, f_25 {}, f_26 {}, f_27 {})",
-                DB,
-                TB,
+                db,
+                tb,
                 "TINYINT NULL",
                 "SMALLINT NULL",
                 "MEDIUMINT NULL",
@@ -40,10 +41,10 @@ pub mod test {
             )
         }
 
-        pub fn get_update_table_sql_with_all_types(f_0_value: String, values: Vec<String>) -> String {
+        pub fn get_update_table_sql_with_all_types(db: &str, tb: &str, f_0_value: String, values: Vec<String>) -> String {
             format!(
                 "UPDATE {}.{} SET f_1={}, f_2={}, f_3={}, f_4={}, f_5={}, f_6={}, f_7={}, f_8={}, f_9={}, f_10={}, f_11={}, f_12={}, f_13={}, f_14={}, f_15={}, f_16={}, f_17={}, f_18={}, f_19={}, f_20={}, f_21={}, f_22={}, f_23={}, f_24={}, f_25={}, f_26={}, f_27={} WHERE f_0={}",
-                DB, TB,
+                db, tb,
                 values[1], values[2], values[3], values[4], values[5], values[6], 
                 values[7], values[8], values[9], values[10], values[11], values[12], 
                 values[13], values[14], values[15], values[16], values[17], values[18], 

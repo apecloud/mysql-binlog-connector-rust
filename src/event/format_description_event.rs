@@ -5,7 +5,7 @@ use std::io::{Cursor, Read, Seek, SeekFrom};
 
 use super::checksum_type::ChecksumType;
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct FormatDescriptionEvent {
     pub binlog_version: u16,
     pub server_version: String,

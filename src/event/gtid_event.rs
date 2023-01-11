@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Write;
 use std::io::Cursor;
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct GtidEvent {
     pub flags: u8,
     pub gtid: String,

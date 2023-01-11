@@ -6,7 +6,7 @@ use crate::{binlog_error::BinlogError, ext::cursor_ext::CursorExt};
 
 use super::{row_event::RowEvent, table_map_event::TableMapEvent};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct DeleteRowsEvent {
     pub table_id: u64,
     pub included_columns: Vec<bool>,

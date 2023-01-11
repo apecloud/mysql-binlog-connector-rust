@@ -16,7 +16,7 @@ use super::{
 pub struct CommandUtil {}
 
 impl CommandUtil {
-    pub fn connect_and_authenticate(
+    pub async fn connect_and_authenticate(
         hostname: String,
         port: String,
         username: String,
@@ -24,10 +24,10 @@ impl CommandUtil {
         schema: String,
     ) -> Result<PacketChannel, BinlogError> {
         // connect to hostname:port
-        let mut channel = PacketChannel::new(hostname.clone(), port.clone())?;
+        let mut channel = PacketChannel::new(hostname.clone(), port.clone()).await?;
 
         // read and parse greeting packet
-        let (greeting_buf, sequence) = channel.read_with_sequece()?;
+        let (greeting_buf, sequence) = channel.read_with_sequece().await?;
         let greeting_packet = GreetingPacket::new(greeting_buf)?;
 
         let mut command = AuthenticateCommand {
@@ -38,48 +38,50 @@ impl CommandUtil {
             collation: greeting_packet.server_collation,
         };
         // send authenticate command
-        channel.write(&command.to_bytes()?, sequence + 1)?;
+        channel.write(&command.to_bytes()?, sequence + 1).await?;
         // check result
-        let res_buf = channel.read()?;
+        let res_buf = channel.read().await?;
         Self::parse_result(&res_buf)?;
 
         Ok(channel)
     }
 
-    pub fn execute_query(
+    pub async fn execute_query(
         channel: &mut PacketChannel,
         sql: String,
     ) -> Result<Vec<ResultSetRowPacket>, BinlogError> {
-        Self::execute_sql(channel, sql)?;
+        Self::execute_sql(channel, sql).await?;
         // read to EOF
-        while channel.read()?[0] != MysqlRespCode::EOF {}
+        while channel.read().await?[0] != MysqlRespCode::EOF {}
         // get result sets
         let mut result_sets = Vec::new();
 
-        let mut buf = channel.read()?;
+        let mut buf = channel.read().await?;
         while buf[0] != MysqlRespCode::EOF {
             Self::check_error_packet(&buf)?;
             let result_set = ResultSetRowPacket::new(&buf)?;
             result_sets.push(result_set);
-            buf = channel.read()?;
+            buf = channel.read().await?;
         }
 
         Ok(result_sets)
     }
 
-    pub fn execute_sql(channel: &mut PacketChannel, sql: String) -> Result<(), BinlogError> {
+    pub async fn execute_sql(channel: &mut PacketChannel, sql: String) -> Result<(), BinlogError> {
         let mut command = QueryCommand { sql };
 
         // send the query command, sequence for non-authenticate commands are always 0
-        channel.write(&command.to_bytes()?, 0)?;
+        channel.write(&command.to_bytes()?, 0).await?;
 
         // read the response packet
-        let buf = channel.read()?;
+        let buf = channel.read().await?;
         Self::check_error_packet(&buf)
     }
 
-    pub fn fetch_binlog_info(channel: &mut PacketChannel) -> Result<(String, u64), BinlogError> {
-        let result_sets = CommandUtil::execute_query(channel, "show master status".to_string())?;
+    pub async fn fetch_binlog_info(
+        channel: &mut PacketChannel,
+    ) -> Result<(String, u64), BinlogError> {
+        let result_sets = Self::execute_query(channel, "show master status".to_string()).await?;
         if result_sets.len() == 0 {
             return Err(BinlogError::MysqlError {
                 error: "failed to fetch binlog filename and position".to_string(),
@@ -90,9 +92,11 @@ impl CommandUtil {
         Ok((binlog_filename, binlog_position))
     }
 
-    pub fn fetch_binlog_checksum(channel: &mut PacketChannel) -> Result<ChecksumType, BinlogError> {
+    pub async fn fetch_binlog_checksum(
+        channel: &mut PacketChannel,
+    ) -> Result<ChecksumType, BinlogError> {
         let result_set_rows =
-            CommandUtil::execute_query(channel, "select @@global.binlog_checksum".to_string())?;
+            Self::execute_query(channel, "select @@global.binlog_checksum".to_string()).await?;
         let mut checksum_name = "";
         if result_set_rows.len() > 0 {
             checksum_name = result_set_rows[0].values[0].as_str();
@@ -100,18 +104,18 @@ impl CommandUtil {
         Ok(ChecksumType::from_name(checksum_name))
     }
 
-    pub fn setup_binlog_connection(channel: &mut PacketChannel) -> Result<(), BinlogError> {
+    pub async fn setup_binlog_connection(channel: &mut PacketChannel) -> Result<(), BinlogError> {
         let mut command = QueryCommand {
             sql: "set @master_binlog_checksum= @@global.binlog_checksum".to_string(),
         };
-        channel.write(&command.to_bytes()?, 0)?;
+        channel.write(&command.to_bytes()?, 0).await?;
 
-        let buf = channel.read()?;
-        CommandUtil::check_error_packet(&buf)?;
+        let buf = channel.read().await?;
+        Self::check_error_packet(&buf)?;
         Ok(())
     }
 
-    pub fn dump_binlog(
+    pub async fn dump_binlog(
         channel: &mut PacketChannel,
         binlog_filename: String,
         binlog_position: u64,
@@ -124,11 +128,11 @@ impl CommandUtil {
         };
 
         let buf = command.to_bytes()?;
-        channel.write(&buf, 0)?;
+        channel.write(&buf, 0).await?;
         Ok(())
     }
 
-    fn parse_result(buf: &Vec<u8>) -> Result<(), BinlogError> {
+    pub fn parse_result(buf: &Vec<u8>) -> Result<(), BinlogError> {
         match buf[0] {
             MysqlRespCode::OK => Ok(()),
 

@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::binlog_error::BinlogError;
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct XidEvent {
     pub xid: u64,
 }

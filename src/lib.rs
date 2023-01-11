@@ -1,6 +1,7 @@
 pub mod binlog_client;
 pub mod binlog_error;
 pub mod binlog_parser;
+pub mod binlog_stream;
 pub mod column;
 mod command;
 mod constants;

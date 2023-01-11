@@ -8,7 +8,7 @@ use super::{
     write_rows_event::WriteRowsEvent, xa_prepare_event::XaPrepareEvent, xid_event::XidEvent,
 };
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub enum EventData {
     NotSupported,
     FormatDescription(FormatDescriptionEvent),
