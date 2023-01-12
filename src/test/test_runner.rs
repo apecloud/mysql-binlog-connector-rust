@@ -24,11 +24,7 @@ pub mod test {
         pub delete_events: Vec<DeleteRowsEvent>,
         pub query_events: Vec<QueryEvent>,
         pub binlog_parse_millis: u64,
-        pub host: String,
-        pub port: String,
-        pub user_name: String,
-        pub password: String,
-        pub schema: String,
+        pub db_url: String,
         pub server_id: u64,
         pub default_db: String,
         pub default_tb: String,
@@ -40,11 +36,7 @@ pub mod test {
             // load environment variables
             let env_path = env::current_dir().unwrap().join("src/test/.env");
             dotenv::from_path(env_path).unwrap();
-            let host = env::var("host").unwrap();
-            let port = env::var("port").unwrap();
-            let user_name = env::var("user_name").unwrap();
-            let password = env::var("password").unwrap();
-            let schema = env::var("schema").unwrap();
+            let db_url = env::var("db_url").unwrap();
             let server_id: u64 = env::var("server_id").unwrap().parse().unwrap();
             let default_db = env::var("default_db").unwrap();
             let default_tb = env::var("default_tb").unwrap();
@@ -55,11 +47,7 @@ pub mod test {
                 delete_events: Vec::new(),
                 query_events: Vec::new(),
                 binlog_parse_millis: 100,
-                host,
-                port,
-                user_name,
-                password,
-                schema,
+                db_url,
                 server_id,
                 default_db,
                 default_tb,
@@ -183,10 +171,7 @@ pub mod test {
 
             // parse binlogs
             let client = BinlogClient {
-                hostname: self.host.clone(),
-                port: self.port.clone(),
-                username: self.user_name.clone(),
-                password: self.password.clone(),
+                url: self.db_url.clone(),
                 binlog_filename,
                 binlog_position,
                 server_id: self.server_id,
@@ -218,17 +203,10 @@ pub mod test {
             prepare_sqls: Vec<String>,
             test_sqls: Vec<String>,
         ) -> Result<(String, u64), BinlogError> {
-            let mut channel = CommandUtil::connect_and_authenticate(
-                self.host.clone(),
-                self.port.clone(),
-                self.user_name.clone(),
-                self.password.clone(),
-                self.schema.clone(),
-            )
-            .await?;
+            let mut channel = CommandUtil::connect_and_authenticate(&self.db_url).await?;
 
             for sql in prepare_sqls {
-                CommandUtil::execute_sql(&mut channel, sql).await?;
+                CommandUtil::execute_sql(&mut channel, &sql).await?;
             }
 
             // get current binlog info
@@ -236,7 +214,7 @@ pub mod test {
                 CommandUtil::fetch_binlog_info(&mut channel).await?;
 
             for sql in test_sqls {
-                CommandUtil::execute_sql(&mut channel, sql.to_string()).await?;
+                CommandUtil::execute_sql(&mut channel, &sql).await?;
             }
 
             Ok((binlog_filename, binlog_position))

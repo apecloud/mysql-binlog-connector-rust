@@ -6,10 +6,7 @@ use crate::{
 };
 
 pub struct BinlogClient {
-    pub hostname: String,
-    pub port: String,
-    pub username: String,
-    pub password: String,
+    pub url: String,
     pub binlog_filename: String,
     pub binlog_position: u64,
     pub server_id: u64,
@@ -20,14 +17,7 @@ const MIN_BINLOG_POSITION: u64 = 4;
 impl BinlogClient {
     pub async fn connect(&mut self) -> Result<BinlogStream, BinlogError> {
         // init connect
-        let mut channel = CommandUtil::connect_and_authenticate(
-            self.hostname.clone(),
-            self.port.clone(),
-            self.username.clone(),
-            self.password.clone(),
-            "".to_string(),
-        )
-        .await?;
+        let mut channel = CommandUtil::connect_and_authenticate(&self.url).await?;
 
         // fetch binlog info
         if self.binlog_filename.is_empty() {
@@ -50,7 +40,7 @@ impl BinlogClient {
         // dump binlog
         CommandUtil::dump_binlog(
             &mut channel,
-            self.binlog_filename.clone(),
+            &self.binlog_filename,
             self.binlog_position,
             self.server_id,
         )

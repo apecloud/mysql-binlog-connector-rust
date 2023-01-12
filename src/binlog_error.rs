@@ -13,6 +13,8 @@ pub enum BinlogError {
     IoError { error: std::io::Error },
 
     FromUtf8Error { error: std::string::FromUtf8Error },
+
+    ParseError { error: url::ParseError },
 }
 
 impl From<std::io::Error> for BinlogError {
@@ -36,5 +38,11 @@ impl From<std::fmt::Error> for BinlogError {
 impl From<std::num::ParseIntError> for BinlogError {
     fn from(err: std::num::ParseIntError) -> Self {
         Self::ParseIntError { error: err }
+    }
+}
+
+impl From<url::ParseError> for BinlogError {
+    fn from(err: url::ParseError) -> Self {
+        Self::ParseError { error: err }
     }
 }

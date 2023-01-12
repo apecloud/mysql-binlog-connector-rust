@@ -1,3 +1,5 @@
+use url::Url;
+
 use crate::{
     binlog_error::BinlogError,
     constants::MysqlRespCode,
@@ -16,24 +18,20 @@ use super::{
 pub struct CommandUtil {}
 
 impl CommandUtil {
-    pub async fn connect_and_authenticate(
-        hostname: String,
-        port: String,
-        username: String,
-        password: String,
-        schema: String,
-    ) -> Result<PacketChannel, BinlogError> {
+    pub async fn connect_and_authenticate(url: &str) -> Result<PacketChannel, BinlogError> {
+        let (host, port, username, password, schema) = Self::parse_url(url)?;
+
         // connect to hostname:port
-        let mut channel = PacketChannel::new(hostname.clone(), port.clone()).await?;
+        let mut channel = PacketChannel::new(&host, &port).await?;
 
         // read and parse greeting packet
         let (greeting_buf, sequence) = channel.read_with_sequece().await?;
         let greeting_packet = GreetingPacket::new(greeting_buf)?;
 
         let mut command = AuthenticateCommand {
-            schema: schema.clone(),
-            username: username.clone(),
-            password: password.clone(),
+            schema,
+            username,
+            password,
             scramble: greeting_packet.scramble.clone(),
             collation: greeting_packet.server_collation,
         };
@@ -46,9 +44,26 @@ impl CommandUtil {
         Ok(channel)
     }
 
+    pub fn parse_url(url: &str) -> Result<(String, String, String, String, String), BinlogError> {
+        // url example: mysql://root:123456@127.0.0.1:3307/test_db?ssl-mode=disabled
+        let url_info = Url::parse(url)?;
+        let host = url_info.host_str().unwrap().to_string();
+        let port = format!("{}", url_info.port().unwrap());
+        let username = url_info.username().to_string();
+        let password = url_info.password().unwrap().to_string();
+        let mut schema = "".to_string();
+        let pathes = url_info.path_segments().map(|c| c.collect::<Vec<_>>());
+        if let Some(vec) = pathes {
+            if vec.len() > 0 {
+                schema = vec[0].to_string();
+            }
+        }
+        Ok((host, port, username, password, schema))
+    }
+
     pub async fn execute_query(
         channel: &mut PacketChannel,
-        sql: String,
+        sql: &str,
     ) -> Result<Vec<ResultSetRowPacket>, BinlogError> {
         Self::execute_sql(channel, sql).await?;
         // read to EOF
@@ -67,8 +82,10 @@ impl CommandUtil {
         Ok(result_sets)
     }
 
-    pub async fn execute_sql(channel: &mut PacketChannel, sql: String) -> Result<(), BinlogError> {
-        let mut command = QueryCommand { sql };
+    pub async fn execute_sql(channel: &mut PacketChannel, sql: &str) -> Result<(), BinlogError> {
+        let mut command = QueryCommand {
+            sql: sql.to_string(),
+        };
 
         // send the query command, sequence for non-authenticate commands are always 0
         channel.write(&command.to_bytes()?, 0).await?;
@@ -81,7 +98,7 @@ impl CommandUtil {
     pub async fn fetch_binlog_info(
         channel: &mut PacketChannel,
     ) -> Result<(String, u64), BinlogError> {
-        let result_sets = Self::execute_query(channel, "show master status".to_string()).await?;
+        let result_sets = Self::execute_query(channel, "show master status").await?;
         if result_sets.len() == 0 {
             return Err(BinlogError::MysqlError {
                 error: "failed to fetch binlog filename and position".to_string(),
@@ -96,7 +113,7 @@ impl CommandUtil {
         channel: &mut PacketChannel,
     ) -> Result<ChecksumType, BinlogError> {
         let result_set_rows =
-            Self::execute_query(channel, "select @@global.binlog_checksum".to_string()).await?;
+            Self::execute_query(channel, "select @@global.binlog_checksum").await?;
         let mut checksum_name = "";
         if result_set_rows.len() > 0 {
             checksum_name = result_set_rows[0].values[0].as_str();
@@ -117,12 +134,12 @@ impl CommandUtil {
 
     pub async fn dump_binlog(
         channel: &mut PacketChannel,
-        binlog_filename: String,
+        binlog_filename: &str,
         binlog_position: u64,
         server_id: u64,
     ) -> Result<(), BinlogError> {
         let mut command = DumpBinlogCommand {
-            binlog_filename,
+            binlog_filename: binlog_filename.to_string(),
             binlog_position,
             server_id,
         };

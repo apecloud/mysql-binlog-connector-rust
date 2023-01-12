@@ -12,7 +12,7 @@ pub struct PacketChannel {
 }
 
 impl PacketChannel {
-    pub async fn new(ip: String, port: String) -> Result<Self, BinlogError> {
+    pub async fn new(ip: &str, port: &str) -> Result<Self, BinlogError> {
         let stream = TcpStream::connect(format!("{}:{}", ip, port)).await?;
         Ok(Self { stream })
     }
