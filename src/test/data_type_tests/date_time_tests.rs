@@ -290,9 +290,9 @@ mod test {
         // MySQL converts TIMESTAMP values from the current time zone to UTC for storage,
         // and back from UTC to the current time zone for retrieval.
         // (This does not occur for other types such as DATETIME.)
-        let micros_per_second = 1000000u64;
+        let micros_per_second = 1000000i64;
         // 2147483647 is the timestamp (UTC) for 2022-01-02 03:04:05 (UTC)
-        // 1641092645 is the timestamp (UTC) for 2022-01-02 03:04:05 (UTC)
+        // 1641092645 is the timestamp (UTC) for 2038-01-19 03:14:07 (UTC)
         let test_utc_timestamp = 1641092645 * micros_per_second;
         let check_values = [
             1000000,
@@ -340,7 +340,7 @@ mod test {
             .to_string()];
         runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, values);
 
-        let micros_per_second = 1000000u64;
+        let micros_per_second = 1000000i64;
         let test_utc_timestamp = 1641092645 * micros_per_second;
         let check_values = [
             1000000,
@@ -384,7 +384,7 @@ mod test {
             .to_string()];
         runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, values);
 
-        let micros_per_second = 1000000u64;
+        let micros_per_second = 1000000i64;
         let test_utc_timestamp = 1641092645 * micros_per_second;
         let check_values = [
             1000000,

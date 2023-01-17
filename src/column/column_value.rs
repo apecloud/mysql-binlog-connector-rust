@@ -38,7 +38,11 @@ pub enum ColumnValue {
     DateTime(String),
     // A datatype containing timestamp values ranging from
     // 1970-01-01 00:00:01' UTC to '2038-01-19 03:14:07' UTC.
-    Timestamp(u64),
+    // MySQL converts TIMESTAMP values from the current time zone to UTC for storage,
+    // and back from UTC to the current time zone for retrieval.
+    // (This does not occur for other types such as DATETIME.)
+    // refer: https://dev.mysql.com/doc/refman/8.0/en/datetime.html
+    Timestamp(i64),
     // A datatype to store year with a range of 1901 to 2155,
     // refer: https://dev.mysql.com/doc/refman/8.0/en/year.html
     Year(u16),
@@ -47,7 +51,7 @@ pub enum ColumnValue {
     // A datatype containing binary large objects
     Blob(Vec<u8>),
     // A datatype containing a set of bit
-    Bit(Vec<bool>),
+    Bit(u64),
     // A user defined set type
     // refer: https://dev.mysql.com/doc/refman/8.0/en/set.html
     // A SET column can have a maximum of 64 distinct members.
@@ -144,12 +148,14 @@ impl ColumnValue {
         Ok(value)
     }
 
-    fn parse_bit(
-        cursor: &mut Cursor<&Vec<u8>>,
-        column_meta: u16,
-    ) -> Result<Vec<bool>, BinlogError> {
+    fn parse_bit(cursor: &mut Cursor<&Vec<u8>>, column_meta: u16) -> Result<u64, BinlogError> {
         let bit_count = (column_meta >> 8) * 8 + (column_meta & 0xFF);
-        cursor.read_bits(bit_count as usize, true)
+        let bytes = cursor.read_bits2(bit_count as usize, true)?;
+        let mut result = 0u64;
+        for i in 0..bytes.len() {
+            result |= (bytes[i] as u64) << (i * 8);
+        }
+        Ok(result)
     }
 
     fn parse_date(cursor: &mut Cursor<&Vec<u8>>) -> Result<String, BinlogError> {
@@ -197,18 +203,18 @@ impl ColumnValue {
         Ok(fraction as u32)
     }
 
-    fn parse_timestamp(cursor: &mut Cursor<&Vec<u8>>) -> Result<u64, BinlogError> {
+    fn parse_timestamp(cursor: &mut Cursor<&Vec<u8>>) -> Result<i64, BinlogError> {
         // Stored as a 4 byte UNIX timestamp (number of seconds since 00:00, Jan 1 1970 UTC).
-        Ok((cursor.read_u32::<LittleEndian>()? * 1000) as u64)
+        Ok((cursor.read_u32::<LittleEndian>()? * 1000) as i64)
     }
 
     fn parse_timestamp2(
         cursor: &mut Cursor<&Vec<u8>>,
         column_meta: u16,
-    ) -> Result<u64, BinlogError> {
+    ) -> Result<i64, BinlogError> {
         let second = cursor.read_u32::<BigEndian>()?;
         let micros = Self::parse_fraction(cursor, column_meta)?;
-        Ok(1000000 * second as u64 + micros as u64)
+        Ok(1000000 * second as i64 + micros as i64)
     }
 
     fn parse_datetime(cursor: &mut Cursor<&Vec<u8>>) -> Result<String, BinlogError> {

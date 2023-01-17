@@ -27,6 +27,9 @@ impl Assert {
             ColumnValue::Set(v) => {
                 assert_eq!(*v, value as u64);
             }
+            ColumnValue::Bit(v) => {
+                assert_eq!(*v, value as u64);
+            }
             _ => {}
         }
     }
@@ -61,15 +64,6 @@ impl Assert {
         }
     }
 
-    pub fn assert_bit_eq(column_value: &ColumnValue, value: Vec<bool>) {
-        match column_value {
-            ColumnValue::Bit(v) => {
-                assert_eq!(*v, value);
-            }
-            _ => {}
-        }
-    }
-
     pub fn assert_bytes_eq(column_value: &ColumnValue, value: Vec<u8>) {
         match column_value {
             ColumnValue::String(v) | ColumnValue::Blob(v) => {
@@ -91,10 +85,10 @@ impl Assert {
         }
     }
 
-    pub fn assert_timestamp_eq(column_value: &ColumnValue, value: u64) {
+    pub fn assert_timestamp_eq(column_value: &ColumnValue, value: i64) {
         match column_value {
             ColumnValue::Timestamp(v) => {
-                assert_eq!(*v, value as u64);
+                assert_eq!(*v, value);
             }
             _ => {}
         }

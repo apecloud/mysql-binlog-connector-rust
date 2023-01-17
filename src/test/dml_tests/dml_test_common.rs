@@ -219,12 +219,12 @@ pub mod test {
             f5_v: String,
             f6_v: f32,
             f7_v: f64,
-            f8_v: Vec<bool>,
+            f8_v: i64,
             f9_v: String,
             f10_v: String,
             f11_v: String,
             f12_v: u16,
-            f13_v: u64,
+            f13_v: i64,
             f14_v: Vec<u8>,
             f15_v: Vec<u8>,
             f16_v: Vec<u8>,
@@ -257,7 +257,7 @@ pub mod test {
             // DOUBLE(8,3)
             Assert::assert_double_eq(&event.column_values[7], f7_v);
             // BIT(3)
-            Assert::assert_bit_eq(&event.column_values[8], f8_v);
+            Assert::assert_numeric_eq(&event.column_values[8], f8_v);
             // DATETIME(6)
             Assert::assert_string_eq(&event.column_values[9], f9_v);
             // TIME(6)

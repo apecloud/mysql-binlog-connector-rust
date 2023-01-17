@@ -15,6 +15,8 @@ pub trait CursorExt {
 
     fn read_bits(&mut self, size: usize, big_endian: bool) -> Result<Vec<bool>, BinlogError>;
 
+    fn read_bits2(&mut self, size: usize, big_endian: bool) -> Result<Vec<u8>, BinlogError>;
+
     fn available(&mut self) -> usize;
 
     fn read_bytes(&mut self, size: usize) -> Result<Vec<u8>, BinlogError>;
@@ -80,7 +82,7 @@ impl CursorExt for Cursor<&Vec<u8>> {
     }
 
     /**
-     * read n bits from cursor, if the origin data is encoded in BigEndian, reverse the order first
+     * read n bits from cursor to Vec<bool>, if the origin data is encoded in BigEndian, reverse the order first
      */
     fn read_bits(&mut self, size: usize, big_endian: bool) -> Result<Vec<bool>, BinlogError> {
         // the number of bytes needed is int((count + 7) / 8)
@@ -98,6 +100,20 @@ impl CursorExt for Cursor<&Vec<u8>> {
             bits[i] = belong_to_byte & index_in_byte != 0;
         }
         Ok(bits)
+    }
+
+    /**
+     * read n bits from cursor, if the origin data is encoded in BigEndian, reverse the order first
+     */
+    fn read_bits2(&mut self, size: usize, big_endian: bool) -> Result<Vec<u8>, BinlogError> {
+        // the number of bytes needed is int((count + 7) / 8)
+        let mut bytes = vec![0u8; (size + 7) >> 3];
+        self.read_exact(&mut bytes)?;
+
+        if big_endian {
+            bytes.reverse();
+        }
+        Ok(bytes)
     }
 
     /**
