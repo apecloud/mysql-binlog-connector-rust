@@ -12,10 +12,13 @@ mod test {
     #[serial]
     fn test_insert_multiple_rows() {
         let mut runner = TestRunner::new();
-        let prepare_sqls = vec![DmlTestCommon::get_create_table_sql_with_all_types(
-            &runner.default_db,
-            &runner.default_tb,
-        )];
+        let prepare_sqls = vec![
+            DmlTestCommon::get_create_table_sql_with_all_types(
+                &runner.default_db,
+                &runner.default_tb,
+            ),
+            "SET @@session.time_zone='UTC'".to_string(),
+        ];
         let values = DmlTestCommon::generate_basic_dml_test_data();
         let insert_test_values = vec![
             "(".to_string() + &values[0].join(",") + "),(" + &values[1].join(",") + ")",
@@ -128,10 +131,13 @@ mod test {
     #[serial]
     fn test_insert_partial_null_fields() {
         let mut runner = TestRunner::new();
-        let prepare_sqls = vec![DmlTestCommon::get_create_table_sql_with_all_types(
-            &runner.default_db,
-            &runner.default_tb,
-        )];
+        let prepare_sqls = vec![
+            DmlTestCommon::get_create_table_sql_with_all_types(
+                &runner.default_db,
+                &runner.default_tb,
+            ),
+            "SET @@session.time_zone='UTC'".to_string(),
+        ];
         let values = DmlTestCommon::generate_basic_dml_test_data();
         let test_values = vec!["(".to_string() + &values[3].join(",") + ")"];
         runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, test_values);
@@ -190,10 +196,13 @@ mod test {
     #[serial]
     fn test_insert_all_null_fields() {
         let mut runner = TestRunner::new();
-        let prepare_sqls = vec![DmlTestCommon::get_create_table_sql_with_all_types(
-            &runner.default_db,
-            &runner.default_tb,
-        )];
+        let prepare_sqls = vec![
+            DmlTestCommon::get_create_table_sql_with_all_types(
+                &runner.default_db,
+                &runner.default_tb,
+            ),
+            "SET @@session.time_zone='UTC'".to_string(),
+        ];
         let values = DmlTestCommon::generate_basic_dml_test_data();
         let test_values = vec!["(".to_string() + &values[4].join(",") + ")"];
         runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, test_values);

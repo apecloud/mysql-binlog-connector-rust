@@ -1,66 +1,18 @@
-use url::Url;
-
 use crate::{
     binlog_error::BinlogError,
     constants::MysqlRespCode,
     event::checksum_type::ChecksumType,
     network::{
-        error_packet::ErrorPacket, greeting_packet::GreetingPacket, packet_channel::PacketChannel,
+        error_packet::ErrorPacket, packet_channel::PacketChannel,
         result_set_row_packet::ResultSetRowPacket,
     },
 };
 
-use super::{
-    authenticate_command::AuthenticateCommand, dump_binlog_command::DumpBinlogCommand,
-    query_command::QueryCommand,
-};
+use super::{dump_binlog_command::DumpBinlogCommand, query_command::QueryCommand};
 
 pub struct CommandUtil {}
 
 impl CommandUtil {
-    pub async fn connect_and_authenticate(url: &str) -> Result<PacketChannel, BinlogError> {
-        let (host, port, username, password, schema) = Self::parse_url(url)?;
-
-        // connect to hostname:port
-        let mut channel = PacketChannel::new(&host, &port).await?;
-
-        // read and parse greeting packet
-        let (greeting_buf, sequence) = channel.read_with_sequece().await?;
-        let greeting_packet = GreetingPacket::new(greeting_buf)?;
-
-        let mut command = AuthenticateCommand {
-            schema,
-            username,
-            password,
-            scramble: greeting_packet.scramble.clone(),
-            collation: greeting_packet.server_collation,
-        };
-        // send authenticate command
-        channel.write(&command.to_bytes()?, sequence + 1).await?;
-        // check result
-        let res_buf = channel.read().await?;
-        Self::parse_result(&res_buf)?;
-
-        Ok(channel)
-    }
-
-    pub fn parse_url(url: &str) -> Result<(String, String, String, String, String), BinlogError> {
-        // url example: mysql://root:123456@127.0.0.1:3307/test_db?ssl-mode=disabled
-        let url_info = Url::parse(url)?;
-        let host = url_info.host_str().unwrap().to_string();
-        let port = format!("{}", url_info.port().unwrap());
-        let username = url_info.username().to_string();
-        let password = url_info.password().unwrap().to_string();
-        let mut schema = "".to_string();
-        let pathes = url_info.path_segments().map(|c| c.collect::<Vec<_>>());
-        if let Some(vec) = pathes {
-            if vec.len() > 0 {
-                schema = vec[0].to_string();
-            }
-        }
-        Ok((host, port, username, password, schema))
-    }
-
     pub async fn execute_query(
         channel: &mut PacketChannel,
         sql: &str,
@@ -155,22 +107,17 @@ impl CommandUtil {
 
             MysqlRespCode::ERROR => Self::check_error_packet(&buf),
 
-            // TODO
-            MysqlRespCode::AUTH_PLUGIN_SWITCH => Err(BinlogError::MysqlError {
-                error: "unsupported mysql response code: AUTH_PLUGIN_SWITCH".to_string(),
-            }),
-
             _ => Err(BinlogError::MysqlError {
                 error: "connect mysql failed".to_string(),
             }),
         }
     }
 
-    fn check_error_packet(buf: &Vec<u8>) -> Result<(), BinlogError> {
+    pub fn check_error_packet(buf: &Vec<u8>) -> Result<(), BinlogError> {
         if buf[0] == MysqlRespCode::ERROR {
-            let _error_packet = ErrorPacket::new(buf)?;
+            let error_packet = ErrorPacket::new(buf)?;
             return Err(BinlogError::MysqlError {
-                error: "connect mysql failed, mysql response code: ERROR".to_string(),
+                error: error_packet.error_message,
             });
         }
         Ok(())

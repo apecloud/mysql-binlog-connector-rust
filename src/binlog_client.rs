@@ -1,8 +1,10 @@
 use std::collections::HashMap;
 
 use crate::{
-    binlog_error::BinlogError, binlog_parser::BinlogParser, binlog_stream::BinlogStream,
-    command::command_util::CommandUtil,
+    binlog_error::BinlogError,
+    binlog_parser::BinlogParser,
+    binlog_stream::BinlogStream,
+    command::{authenticator::Authenticator, command_util::CommandUtil},
 };
 
 pub struct BinlogClient {
@@ -17,7 +19,8 @@ const MIN_BINLOG_POSITION: u64 = 4;
 impl BinlogClient {
     pub async fn connect(&mut self) -> Result<BinlogStream, BinlogError> {
         // init connect
-        let mut channel = CommandUtil::connect_and_authenticate(&self.url).await?;
+        let mut authenticator = Authenticator::new(&self.url)?;
+        let mut channel = authenticator.connect().await?;
 
         // fetch binlog info
         if self.binlog_filename.is_empty() {

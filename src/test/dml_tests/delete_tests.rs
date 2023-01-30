@@ -11,10 +11,13 @@ mod test {
     #[serial]
     fn test_delete_multiple_rows() {
         let mut runner = TestRunner::new();
-        let prepare_sqls = vec![DmlTestCommon::get_create_table_sql_with_all_types(
-            &runner.default_db,
-            &runner.default_tb,
-        )];
+        let prepare_sqls = vec![
+            DmlTestCommon::get_create_table_sql_with_all_types(
+                &runner.default_db,
+                &runner.default_tb,
+            ),
+            "SET @@session.time_zone='UTC'".to_string(),
+        ];
         let values = DmlTestCommon::generate_basic_dml_test_data();
 
         let insert_test_values = vec![

@@ -11,7 +11,7 @@ pub mod test {
     use crate::{
         binlog_client::BinlogClient,
         binlog_error::BinlogError,
-        command::command_util::CommandUtil,
+        command::{authenticator::Authenticator, command_util::CommandUtil},
         event::{
             delete_rows_event::DeleteRowsEvent, event_data::EventData, query_event::QueryEvent,
             update_rows_event::UpdateRowsEvent, write_rows_event::WriteRowsEvent,
@@ -91,6 +91,17 @@ pub mod test {
                     EventData::WriteRows(event) => {
                         self.insert_events.push(event);
                     }
+                    // mysql8.0 with binlog transaction compression
+                    EventData::TransactionPayload(event) => {
+                        for uncompressed_event in event.uncompressed_events {
+                            match uncompressed_event.1 {
+                                EventData::WriteRows(event) => {
+                                    self.insert_events.push(event);
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
                     _ => {}
                 }
             }
@@ -123,6 +134,17 @@ pub mod test {
                     EventData::DeleteRows(event) => {
                         self.delete_events.push(event);
                     }
+                    // mysql8.0 with binlog transaction compression
+                    EventData::TransactionPayload(event) => {
+                        for uncompressed_event in event.uncompressed_events {
+                            match uncompressed_event.1 {
+                                EventData::DeleteRows(event) => {
+                                    self.delete_events.push(event);
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
                     _ => {}
                 }
             }
@@ -138,6 +160,17 @@ pub mod test {
                 match data {
                     EventData::UpdateRows(event) => {
                         self.update_events.push(event);
+                    }
+                    // mysql8.0 with binlog transaction compression
+                    EventData::TransactionPayload(event) => {
+                        for uncompressed_event in event.uncompressed_events {
+                            match uncompressed_event.1 {
+                                EventData::UpdateRows(event) => {
+                                    self.update_events.push(event);
+                                }
+                                _ => {}
+                            }
+                        }
                     }
                     _ => {}
                 }
@@ -203,7 +236,8 @@ pub mod test {
             prepare_sqls: Vec<String>,
             test_sqls: Vec<String>,
         ) -> Result<(String, u64), BinlogError> {
-            let mut channel = CommandUtil::connect_and_authenticate(&self.db_url).await?;
+            let mut authenticator = Authenticator::new(&self.db_url)?;
+            let mut channel = authenticator.connect().await?;
 
             for sql in prepare_sqls {
                 CommandUtil::execute_sql(&mut channel, &sql).await?;

@@ -12,10 +12,15 @@ mod test {
     #[serial]
     fn test_update_multiple_rows() {
         let mut runner = TestRunner::new();
-        let prepare_sqls = vec![DmlTestCommon::get_create_table_sql_with_all_types(
-            &runner.default_db,
-            &runner.default_tb,
-        )];
+
+        // insert
+        let prepare_sqls = vec![
+            DmlTestCommon::get_create_table_sql_with_all_types(
+                &runner.default_db,
+                &runner.default_tb,
+            ),
+            "SET @@session.time_zone='UTC'".to_string(),
+        ];
         let values = DmlTestCommon::generate_basic_dml_test_data();
         let insert_test_values = vec![
             "(".to_string() + &values[0].join(",") + ")",
@@ -26,6 +31,7 @@ mod test {
         ];
         runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, insert_test_values);
 
+        // update
         let update_test_sqls = vec![
             DmlTestCommon::get_update_table_sql_with_all_types(
                 &runner.default_db,
@@ -52,7 +58,10 @@ mod test {
                 values[4].clone(),
             ),
         ];
-        runner.execute_update_sqls_and_get_binlogs(vec![], update_test_sqls);
+        runner.execute_update_sqls_and_get_binlogs(
+            vec!["SET @@session.time_zone='UTC'".to_string()],
+            update_test_sqls,
+        );
 
         assert_eq!(runner.update_events.len(), 4);
 

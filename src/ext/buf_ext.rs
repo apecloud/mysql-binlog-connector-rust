@@ -8,6 +8,8 @@ pub trait BufExt {
     fn write_null_terminated_string(&mut self, to_write: &str) -> Result<(), BinlogError>;
 
     fn reverse(&mut self);
+
+    fn xor(&mut self, buf2: Vec<u8>) -> Vec<u8>;
 }
 
 impl BufExt for Vec<u8> {
@@ -30,5 +32,13 @@ impl BufExt for Vec<u8> {
             self[i] = self[j];
             self[j] = tmp;
         }
+    }
+
+    fn xor(&mut self, buf2: Vec<u8>) -> Vec<u8> {
+        let mut res = Vec::with_capacity(self.len());
+        for i in 0..self.len() {
+            res.push(self[i] ^ buf2[i % buf2.len()]);
+        }
+        res
     }
 }

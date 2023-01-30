@@ -1,0 +1,9 @@
+[package]
+name = "mysql-binlog-connector-rust-example"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+dotenv = "0.15.0"
+futures = "0.3"
+mysql-binlog-connector-rust = { path = "../" }
