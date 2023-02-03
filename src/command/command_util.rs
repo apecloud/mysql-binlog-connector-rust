@@ -49,7 +49,7 @@ impl CommandUtil {
 
     pub async fn fetch_binlog_info(
         channel: &mut PacketChannel,
-    ) -> Result<(String, u64), BinlogError> {
+    ) -> Result<(String, u32), BinlogError> {
         let result_sets = Self::execute_query(channel, "show master status").await?;
         if result_sets.len() == 0 {
             return Err(BinlogError::MysqlError {
@@ -57,7 +57,7 @@ impl CommandUtil {
             });
         }
         let binlog_filename = result_sets[0].values[0].clone();
-        let binlog_position = result_sets[0].values[1].clone().parse::<u64>()?;
+        let binlog_position = result_sets[0].values[1].clone().parse::<u32>()?;
         Ok((binlog_filename, binlog_position))
     }
 
@@ -87,7 +87,7 @@ impl CommandUtil {
     pub async fn dump_binlog(
         channel: &mut PacketChannel,
         binlog_filename: &str,
-        binlog_position: u64,
+        binlog_position: u32,
         server_id: u64,
     ) -> Result<(), BinlogError> {
         let mut command = DumpBinlogCommand {

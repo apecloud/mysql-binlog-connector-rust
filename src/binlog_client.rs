@@ -10,11 +10,11 @@ use crate::{
 pub struct BinlogClient {
     pub url: String,
     pub binlog_filename: String,
-    pub binlog_position: u64,
+    pub binlog_position: u32,
     pub server_id: u64,
 }
 
-const MIN_BINLOG_POSITION: u64 = 4;
+const MIN_BINLOG_POSITION: u32 = 4;
 
 impl BinlogClient {
     pub async fn connect(&mut self) -> Result<BinlogStream, BinlogError> {

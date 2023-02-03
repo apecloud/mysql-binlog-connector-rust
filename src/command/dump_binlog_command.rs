@@ -9,14 +9,14 @@ use super::command_type::CommandType;
 pub struct DumpBinlogCommand {
     pub server_id: u64,
     pub binlog_filename: String,
-    pub binlog_position: u64,
+    pub binlog_position: u32,
 }
 
 impl DumpBinlogCommand {
     pub fn to_bytes(&mut self) -> Result<Vec<u8>, BinlogError> {
         let mut buf = Vec::new();
         buf.write_u8(CommandType::BinlogDump as u8)?;
-        buf.write_u32::<LittleEndian>(self.binlog_position as u32)?;
+        buf.write_u32::<LittleEndian>(self.binlog_position)?;
 
         let binlog_flags = 0;
         buf.write_u16::<LittleEndian>(binlog_flags)?;

@@ -9,7 +9,7 @@ fn main() {
     let db_url = env::var("db_url").unwrap();
     let server_id: u64 = env::var("server_id").unwrap().parse().unwrap();
     let binlog_filename = env::var("binlog_filename").unwrap();
-    let binlog_position: u64 = env::var("binlog_position").unwrap().parse().unwrap();
+    let binlog_position: u32 = env::var("binlog_position").unwrap().parse().unwrap();
 
     block_on(start_client(
         db_url,
@@ -19,7 +19,7 @@ fn main() {
     ));
 }
 
-async fn start_client(url: String, server_id: u64, binlog_filename: String, binlog_position: u64) {
+async fn start_client(url: String, server_id: u64, binlog_filename: String, binlog_position: u32) {
     let mut client = BinlogClient {
         url,
         binlog_filename,

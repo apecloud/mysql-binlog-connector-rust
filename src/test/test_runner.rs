@@ -235,7 +235,7 @@ pub mod test {
             &self,
             prepare_sqls: Vec<String>,
             test_sqls: Vec<String>,
-        ) -> Result<(String, u64), BinlogError> {
+        ) -> Result<(String, u32), BinlogError> {
             let mut authenticator = Authenticator::new(&self.db_url)?;
             let mut channel = authenticator.connect().await?;
 
