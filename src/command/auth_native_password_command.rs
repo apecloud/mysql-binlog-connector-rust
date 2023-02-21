@@ -16,6 +16,11 @@ pub struct AuthNativePasswordCommand {
 }
 
 impl AuthNativePasswordCommand {
+    pub fn encrypted_password(&mut self) -> Result<Vec<u8>, BinlogError> {
+        let encrypted_password = Self::encrypt_password_sha1(&self.password, &self.scramble)?;
+        Ok(encrypted_password)
+    }
+
     pub fn to_bytes(&mut self) -> Result<Vec<u8>, BinlogError> {
         let mut buf = Vec::new();
 
@@ -52,7 +57,7 @@ impl AuthNativePasswordCommand {
         Ok(buf)
     }
 
-    pub fn encrypt_password_sha1(password: &str, scramble: &str) -> Result<Vec<u8>, BinlogError> {
+    fn encrypt_password_sha1(password: &str, scramble: &str) -> Result<Vec<u8>, BinlogError> {
         let mut hash1 = Self::hash_sha1(password.as_bytes());
         let scramble_concat_hash1 =
             [scramble.as_bytes().to_vec(), Self::hash_sha1(&hash1)].concat();

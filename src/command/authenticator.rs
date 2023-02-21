@@ -82,30 +82,24 @@ impl Authenticator {
         auth_plugin_name: &str,
         sequence: u8,
     ) -> Result<(), BinlogError> {
-        let (auth_res, sequence) = match AuthPlugin::from_name(auth_plugin_name) {
-            AuthPlugin::MySqlNativePassword => {
-                let mut command = AuthNativePasswordCommand {
-                    schema: self.schema.clone(),
-                    username: self.username.clone(),
-                    password: self.password.clone(),
-                    scramble: self.scramble.clone(),
-                    collation: self.collation,
-                };
-                channel.write(&command.to_bytes()?, sequence + 1).await?;
-                channel.read_with_sequece().await?
+        let command_buf = match AuthPlugin::from_name(auth_plugin_name) {
+            AuthPlugin::MySqlNativePassword => AuthNativePasswordCommand {
+                schema: self.schema.clone(),
+                username: self.username.clone(),
+                password: self.password.clone(),
+                scramble: self.scramble.clone(),
+                collation: self.collation,
             }
+            .to_bytes()?,
 
-            AuthPlugin::CachingSha2Password => {
-                let mut command = AuthSha2PasswordCommand {
-                    schema: self.schema.clone(),
-                    username: self.username.clone(),
-                    password: self.password.clone(),
-                    scramble: self.scramble.clone(),
-                    collation: self.collation,
-                };
-                channel.write(&command.to_bytes()?, sequence + 1).await?;
-                channel.read_with_sequece().await?
+            AuthPlugin::CachingSha2Password => AuthSha2PasswordCommand {
+                schema: self.schema.clone(),
+                username: self.username.clone(),
+                password: self.password.clone(),
+                scramble: self.scramble.clone(),
+                collation: self.collation,
             }
+            .to_bytes()?,
 
             AuthPlugin::Unsupported => {
                 return Err(BinlogError::MysqlError {
@@ -114,6 +108,8 @@ impl Authenticator {
             }
         };
 
+        channel.write(&command_buf, sequence + 1).await?;
+        let (auth_res, sequence) = channel.read_with_sequece().await?;
         self.handle_auth_result(channel, auth_plugin_name, sequence, &auth_res)
             .await
     }
@@ -133,7 +129,7 @@ impl Authenticator {
 
             MysqlRespCode::AUTH_PLUGIN_SWITCH => {
                 return self
-                    .handle_auth_plugin_switch(channel, auth_plugin_name, sequence, &auth_res)
+                    .handle_auth_plugin_switch(channel, sequence, &auth_res)
                     .await;
             }
 
@@ -165,38 +161,46 @@ impl Authenticator {
     async fn handle_auth_plugin_switch(
         &mut self,
         channel: &mut PacketChannel,
-        auth_plugin_name: &str,
         sequence: u8,
         auth_res: &Vec<u8>,
     ) -> Result<(), BinlogError> {
         let switch_packet = AuthPluginSwitchPacket::new(&auth_res)?;
+        let auth_plugin_name = &switch_packet.auth_plugin_name;
         self.scramble = switch_packet.scramble;
 
-        // only support caching_sha2_password for auth_plugin_switch
-        if auth_plugin_name == AuthPlugin::CachingSha2Password.to_str() {
-            let mut command = AuthSha2PasswordCommand {
+        let encrypted_password = match AuthPlugin::from_name(auth_plugin_name) {
+            AuthPlugin::CachingSha2Password => AuthSha2PasswordCommand {
                 schema: self.schema.clone(),
                 username: self.username.clone(),
                 password: self.password.clone(),
                 scramble: self.scramble.clone(),
                 collation: self.collation,
-            };
+            }
+            .encrypted_password()?,
 
-            // try authentication with encrypted password, without rsa key
-            channel
-                .write(&command.encrypted_password()?, sequence + 1)
-                .await?;
-            let (encrypted_auth_res, sequence) = channel.read_with_sequece().await?;
-            self.handle_auth_result(channel, auth_plugin_name, sequence, &encrypted_auth_res)
-                .await
-        } else {
-            Err(BinlogError::MysqlError {
-                error: format!(
-                    "unexpected auth plugin for auth plugin switch: {}",
-                    auth_plugin_name
-                ),
-            })
-        }
+            AuthPlugin::MySqlNativePassword => AuthNativePasswordCommand {
+                schema: self.schema.clone(),
+                username: self.username.clone(),
+                password: self.password.clone(),
+                scramble: self.scramble.clone(),
+                collation: self.collation,
+            }
+            .encrypted_password()?,
+
+            _ => {
+                return Err(BinlogError::MysqlError {
+                    error: format!(
+                        "unexpected auth plugin for auth plugin switch: {}",
+                        auth_plugin_name
+                    ),
+                });
+            }
+        };
+
+        channel.write(&encrypted_password, sequence + 1).await?;
+        let (encrypted_auth_res, sequence) = channel.read_with_sequece().await?;
+        self.handle_auth_result(channel, auth_plugin_name, sequence, &encrypted_auth_res)
+            .await
     }
 
     async fn handle_sha2_auth_result(
