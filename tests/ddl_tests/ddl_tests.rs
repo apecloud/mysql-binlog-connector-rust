@@ -3,7 +3,7 @@ mod test {
 
     use serial_test::serial;
 
-    use crate::test::test_runner::test::TestRunner;
+    use crate::test_runner::test::TestRunner;
 
     #[test]
     #[serial]

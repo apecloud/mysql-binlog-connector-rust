@@ -7,8 +7,7 @@ pub mod test {
     };
 
     use async_std::task::block_on;
-
-    use crate::{
+    use mysql_binlog_connector_rust::{
         binlog_client::BinlogClient,
         binlog_error::BinlogError,
         command::{authenticator::Authenticator, command_util::CommandUtil},
@@ -34,7 +33,7 @@ pub mod test {
     impl TestRunner {
         pub fn new() -> TestRunner {
             // load environment variables
-            let env_path = env::current_dir().unwrap().join("src/test/.env");
+            let env_path = env::current_dir().unwrap().join("tests/.env");
             dotenv::from_path(env_path).unwrap();
             let db_url = env::var("db_url").unwrap();
             let server_id: u64 = env::var("server_id").unwrap().parse().unwrap();

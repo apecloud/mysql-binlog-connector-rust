@@ -1,12 +1,10 @@
 #[cfg(test)]
 mod test {
 
+    use mysql_binlog_connector_rust::column::column_value::ColumnValue;
     use serial_test::serial;
 
-    use crate::{
-        column::column_value::ColumnValue,
-        test::{dml_tests::dml_test_common::test::DmlTestCommon, test_runner::test::TestRunner},
-    };
+    use crate::{dml_tests::dml_test_common::test::DmlTestCommon, test_runner::test::TestRunner};
 
     #[test]
     #[serial]

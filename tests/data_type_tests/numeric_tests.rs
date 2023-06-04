@@ -3,7 +3,7 @@ mod test {
 
     use serial_test::serial;
 
-    use crate::test::{assert::Assert, test_runner::test::TestRunner};
+    use crate::{assert::test::Assert, test_runner::test::TestRunner};
 
     // refer to: https://dev.mysql.com/doc/refman/8.0/en/data-types.html
 

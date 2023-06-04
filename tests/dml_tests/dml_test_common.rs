@@ -1,6 +1,8 @@
 #[cfg(test)]
 pub mod test {
-    use crate::{event::row_event::RowEvent, test::{assert::Assert}};
+    use mysql_binlog_connector_rust::event::row_event::RowEvent;
+
+    use crate::assert::test::Assert;
 
     pub struct DmlTestCommon {}
 

@@ -1,16 +1,13 @@
 #[cfg(test)]
 mod test {
-
+    use mysql_binlog_connector_rust::column::column_value::ColumnValue;
     use serial_test::serial;
 
-    use crate::{
-        column::column_value::ColumnValue,
-        test::{dml_tests::dml_test_common::test::DmlTestCommon, test_runner::test::TestRunner},
-    };
+    use crate::{dml_tests::dml_test_common::test::DmlTestCommon, test_runner::test::TestRunner};
 
     #[test]
     #[serial]
-    fn test_insert_multiple_rows() {
+    fn test_delete_multiple_rows() {
         let mut runner = TestRunner::new();
         let prepare_sqls = vec![
             DmlTestCommon::get_create_table_sql_with_all_types(
@@ -20,18 +17,22 @@ mod test {
             "SET @@session.time_zone='UTC'".to_string(),
         ];
         let values = DmlTestCommon::generate_basic_dml_test_data();
+
         let insert_test_values = vec![
-            "(".to_string() + &values[0].join(",") + "),(" + &values[1].join(",") + ")",
+            "(".to_string() + &values[0].join(",") + ")",
+            "(".to_string() + &values[1].join(",") + ")",
             "(".to_string() + &values[2].join(",") + ")",
+            "(".to_string() + &values[3].join(",") + ")",
+            "(".to_string() + &values[4].join(",") + ")",
         ];
         runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, insert_test_values);
+        runner.execute_delete_sqls_and_get_binlogs(vec![], vec![]);
 
-        assert_eq!(runner.insert_events.len(), 2);
-        assert_eq!(runner.insert_events[0].rows.len(), 2);
-        assert_eq!(runner.insert_events[1].rows.len(), 1);
+        assert_eq!(runner.delete_events.len(), 1);
+        assert_eq!(runner.delete_events[0].rows.len(), 5);
 
         DmlTestCommon::check_values(
-            &runner.insert_events[0].rows[0],
+            &runner.delete_events[0].rows[0],
             1,
             2,
             3,
@@ -63,7 +64,7 @@ mod test {
         );
 
         DmlTestCommon::check_values(
-            &runner.insert_events[0].rows[1],
+            &runner.delete_events[0].rows[1],
             10,
             20,
             30,
@@ -95,7 +96,7 @@ mod test {
         );
 
         DmlTestCommon::check_values(
-            &runner.insert_events[1].rows[0],
+            &runner.delete_events[0].rows[2],
             6,
             7,
             8,
@@ -125,42 +126,23 @@ mod test {
             3,
             4,
         );
-    }
-
-    #[test]
-    #[serial]
-    fn test_insert_partial_null_fields() {
-        let mut runner = TestRunner::new();
-        let prepare_sqls = vec![
-            DmlTestCommon::get_create_table_sql_with_all_types(
-                &runner.default_db,
-                &runner.default_tb,
-            ),
-            "SET @@session.time_zone='UTC'".to_string(),
-        ];
-        let values = DmlTestCommon::generate_basic_dml_test_data();
-        let test_values = vec!["(".to_string() + &values[3].join(",") + ")"];
-        runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, test_values);
 
         // NULL fields
         for i in 0..13 {
             assert_eq!(
-                runner.insert_events[0].rows[0].column_values[2 * i + 1],
+                runner.delete_events[0].rows[3].column_values[2 * i + 1],
                 ColumnValue::None
             );
         }
-
         // non-Null fields
         for i in 0..13 {
             assert_ne!(
-                runner.insert_events[0].rows[0].column_values[2 * i],
+                runner.delete_events[0].rows[3].column_values[2 * i],
                 ColumnValue::None
             );
         }
-
-        // value check will be skipped for NULL-value fields
         DmlTestCommon::check_values(
-            &runner.insert_events[0].rows[0],
+            &runner.delete_events[0].rows[3],
             11,
             2,
             3,
@@ -190,26 +172,10 @@ mod test {
             1,
             1,
         );
-    }
-
-    #[test]
-    #[serial]
-    fn test_insert_all_null_fields() {
-        let mut runner = TestRunner::new();
-        let prepare_sqls = vec![
-            DmlTestCommon::get_create_table_sql_with_all_types(
-                &runner.default_db,
-                &runner.default_tb,
-            ),
-            "SET @@session.time_zone='UTC'".to_string(),
-        ];
-        let values = DmlTestCommon::generate_basic_dml_test_data();
-        let test_values = vec!["(".to_string() + &values[4].join(",") + ")"];
-        runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, test_values);
 
         for i in 0..27 {
             assert_eq!(
-                runner.insert_events[0].rows[0].column_values[i],
+                runner.delete_events[0].rows[4].column_values[i],
                 ColumnValue::None
             );
         }

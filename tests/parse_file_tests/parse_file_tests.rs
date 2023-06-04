@@ -2,7 +2,7 @@
 mod test {
     use std::{collections::HashMap, env, fs::File};
 
-    use crate::{binlog_error::BinlogError, binlog_parser::BinlogParser};
+    use mysql_binlog_connector_rust::{binlog_error::BinlogError, binlog_parser::BinlogParser};
 
     #[test]
     fn test_bad_magic() {
@@ -38,9 +38,9 @@ mod test {
     fn open_file(file_name: &str) -> File {
         let current_dir = env::current_dir();
         let file_path = format!(
-            "{}{}{}",
+            "{}/{}/{}",
             current_dir.unwrap().display(),
-            "/src/test/parse_file_tests/",
+            "tests/parse_file_tests",
             file_name
         );
         File::open(file_path).unwrap()
