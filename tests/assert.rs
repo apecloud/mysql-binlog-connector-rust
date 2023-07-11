@@ -94,5 +94,11 @@ pub mod test {
                 _ => {}
             }
         }
+
+        pub fn assert_json_string_eq(json_1: &str, json_2: &str) {
+            let json_1: serde_json::Value = serde_json::from_str(json_1).unwrap();
+            let json_2: serde_json::Value = serde_json::from_str(json_2).unwrap();
+            assert_eq!(json_1, json_2);
+        }
     }
 }

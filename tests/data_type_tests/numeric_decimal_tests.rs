@@ -80,7 +80,7 @@ mod test {
         let prepare_sqls = vec![runner.get_create_table_sql_with_one_field(data_type)];
 
         let (test_values, check_values) = generate_decimal_values(precision, scale);
-        runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, test_values);
+        runner.execute_insert_sqls_and_get_binlogs(&prepare_sqls, &test_values);
 
         for i in 0..check_values.len() {
             Assert::assert_string_eq(

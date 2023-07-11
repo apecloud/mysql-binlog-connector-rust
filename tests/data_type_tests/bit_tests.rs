@@ -20,7 +20,7 @@ mod test {
             "(6)".to_string(),
             "(7)".to_string(),
         ];
-        runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, values);
+        runner.execute_insert_sqls_and_get_binlogs(&prepare_sqls, &values);
 
         Assert::assert_numeric_eq(&runner.insert_events[0].rows[0].column_values[0], 0);
         Assert::assert_numeric_eq(&runner.insert_events[1].rows[0].column_values[0], 1);
@@ -46,7 +46,7 @@ mod test {
             "(6789012345678)".to_string(),
             "(7890123456789)".to_string(),
         ];
-        runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, values);
+        runner.execute_insert_sqls_and_get_binlogs(&prepare_sqls, &values);
 
         Assert::assert_numeric_eq(
             &runner.insert_events[0].rows[0].column_values[0],

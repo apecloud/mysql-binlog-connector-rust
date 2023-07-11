@@ -28,7 +28,7 @@ mod test {
                     ('2022-01-02 03:04:05.001234'),
                     ('2022-01-02 03:04:05.012345')"
             .to_string()];
-        runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, values);
+        runner.execute_insert_sqls_and_get_binlogs(&prepare_sqls, &values);
 
         let check_values = [
             "1000-01-01 00:00:00.000000".to_string(),
@@ -71,7 +71,7 @@ mod test {
                     ('2022-01-02 03:04:05.001'),
                     ('2022-01-02 03:04:05.012')"
             .to_string()];
-        runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, values);
+        runner.execute_insert_sqls_and_get_binlogs(&prepare_sqls, &values);
 
         let check_values = [
             "1000-01-01 00:00:00.000000".to_string(),
@@ -100,7 +100,7 @@ mod test {
         // https://dev.mysql.com/doc/refman/8.0/en/datetime.html
         let prepare_sqls = vec![runner.get_create_table_sql_with_one_field("DATETIME".to_string())];
         let values = vec!["('1000-01-01 00:00:00.000000'),('9999-12-31 23:59:59')".to_string()];
-        runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, values);
+        runner.execute_insert_sqls_and_get_binlogs(&prepare_sqls, &values);
 
         let check_values = [
             "1000-01-01 00:00:00.000000".to_string(),
@@ -136,7 +136,7 @@ mod test {
                     ('03:04:05.001234'),
                     ('03:04:05.012345')"
             .to_string()];
-        runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, values);
+        runner.execute_insert_sqls_and_get_binlogs(&prepare_sqls, &values);
 
         let check_values = [
             "00:00:00.000000".to_string(),
@@ -178,7 +178,7 @@ mod test {
                     ('03:04:05.001'),
                     ('03:04:05.012')"
             .to_string()];
-        runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, values);
+        runner.execute_insert_sqls_and_get_binlogs(&prepare_sqls, &values);
 
         let check_values = [
             "00:00:00.000000".to_string(),
@@ -206,7 +206,7 @@ mod test {
         let mut runner = TestRunner::new();
         let prepare_sqls = vec![runner.get_create_table_sql_with_one_field("TIME".to_string())];
         let values = vec!["('00:00:00'),('23:59:59')".to_string()];
-        runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, values);
+        runner.execute_insert_sqls_and_get_binlogs(&prepare_sqls, &values);
         // the db values are actual: ["00:00:00", "23:59:59"]
         // the parsed binlog values are ["00:00:00.000000", "23:59:59.000000"]
         // we keep the 6 pending zeros since we don't know the field precision when parsing binlog
@@ -227,7 +227,7 @@ mod test {
         let mut runner = TestRunner::new();
         let prepare_sqls = vec![runner.get_create_table_sql_with_one_field("DATE".to_string())];
         let values = vec!["('1000-01-01'),('9999-12-31')".to_string()];
-        runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, values);
+        runner.execute_insert_sqls_and_get_binlogs(&prepare_sqls, &values);
 
         let check_values = ["1000-01-01".to_string(), "9999-12-31".to_string()];
 
@@ -246,7 +246,7 @@ mod test {
         let mut runner = TestRunner::new();
         let prepare_sqls = vec![runner.get_create_table_sql_with_one_field("YEAR".to_string())];
         let values = vec!["('1901'),('2155')".to_string()];
-        runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, values);
+        runner.execute_insert_sqls_and_get_binlogs(&prepare_sqls, &values);
 
         let check_values = [1901, 2155];
 
@@ -285,7 +285,7 @@ mod test {
                     ('2022-01-02 03:04:05.001234'),
                     ('2022-01-02 03:04:05.012345')"
             .to_string()];
-        runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, values);
+        runner.execute_insert_sqls_and_get_binlogs(&prepare_sqls, &values);
 
         // MySQL converts TIMESTAMP values from the current time zone to UTC for storage,
         // and back from UTC to the current time zone for retrieval.
@@ -338,7 +338,7 @@ mod test {
                     ('2022-01-02 03:04:05.001'),
                     ('2022-01-02 03:04:05.012')"
             .to_string()];
-        runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, values);
+        runner.execute_insert_sqls_and_get_binlogs(&prepare_sqls, &values);
 
         let micros_per_second = 1000000i64;
         let test_utc_timestamp = 1641092645 * micros_per_second;
@@ -382,7 +382,7 @@ mod test {
                     ('2022-01-02 03:04:05.001'),
                     ('2022-01-02 03:04:05.012')"
             .to_string()];
-        runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, values);
+        runner.execute_insert_sqls_and_get_binlogs(&prepare_sqls, &values);
 
         let micros_per_second = 1000000i64;
         let test_utc_timestamp = 1641092645 * micros_per_second;

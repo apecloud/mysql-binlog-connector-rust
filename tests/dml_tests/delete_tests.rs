@@ -25,8 +25,8 @@ mod test {
             "(".to_string() + &values[3].join(",") + ")",
             "(".to_string() + &values[4].join(",") + ")",
         ];
-        runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, insert_test_values);
-        runner.execute_delete_sqls_and_get_binlogs(vec![], vec![]);
+        runner.execute_insert_sqls_and_get_binlogs(&prepare_sqls, &insert_test_values);
+        runner.execute_delete_sqls_and_get_binlogs(&vec![], &vec![]);
 
         assert_eq!(runner.delete_events.len(), 1);
         assert_eq!(runner.delete_events[0].rows.len(), 5);

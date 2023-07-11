@@ -62,7 +62,7 @@ mod test {
         with_quotes: bool,
     ) {
         let mut runner = TestRunner::new();
-        runner.execute_ddl_sqls_and_get_binlogs(prepare_sqls, test_sqls.clone());
+        runner.execute_ddl_sqls_and_get_binlogs(&prepare_sqls, &test_sqls);
         for i in 0..test_sqls.len() {
             // since comments will be added to ddl sql in binlog, here we check contain instead of equal.
             // example: the binlog for "drop table db_test_ddl.tb_test_ddl_2" maybe
