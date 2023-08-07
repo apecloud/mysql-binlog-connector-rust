@@ -519,14 +519,13 @@ mod test {
             "CAST(TIMESTAMP'2015-01-15 23:24:25' AS JSON)",
             "CAST(TIMESTAMP'2015-01-15 23:24:25.12' AS JSON)",
             "CAST(TIMESTAMP'2015-01-15 23:24:25.0237' AS JSON)",
-            // "CAST(UNIX_TIMESTAMP('2015-01-15 23:24:25') AS JSON)",
+            "CAST(UNIX_TIMESTAMP(CONVERT_TZ('2015-01-15 23:24:25','GMT',@@session.time_zone)) AS JSON)",
         ];
         let expected_values = vec![
             "\"2015-01-15 23:24:25\"",
             "\"2015-01-15 23:24:25.12\"",
             "\"2015-01-15 23:24:25.0237\"",
-            // TODO: this will fail because of timezone
-            // "1421364265",
+            "1421364265",
         ];
         run_json_test(&origin_values, &expected_values, false);
     }
