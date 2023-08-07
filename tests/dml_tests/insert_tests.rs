@@ -22,7 +22,7 @@ mod test {
             "(".to_string() + &values[0].join(",") + "),(" + &values[1].join(",") + ")",
             "(".to_string() + &values[2].join(",") + ")",
         ];
-        runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, insert_test_values);
+        runner.execute_insert_sqls_and_get_binlogs(&prepare_sqls, &insert_test_values);
 
         assert_eq!(runner.insert_events.len(), 2);
         assert_eq!(runner.insert_events[0].rows.len(), 2);
@@ -138,7 +138,7 @@ mod test {
         ];
         let values = DmlTestCommon::generate_basic_dml_test_data();
         let test_values = vec!["(".to_string() + &values[3].join(",") + ")"];
-        runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, test_values);
+        runner.execute_insert_sqls_and_get_binlogs(&prepare_sqls, &test_values);
 
         // NULL fields
         for i in 0..13 {
@@ -203,7 +203,7 @@ mod test {
         ];
         let values = DmlTestCommon::generate_basic_dml_test_data();
         let test_values = vec!["(".to_string() + &values[4].join(",") + ")"];
-        runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, test_values);
+        runner.execute_insert_sqls_and_get_binlogs(&prepare_sqls, &test_values);
 
         for i in 0..27 {
             assert_eq!(

@@ -58,7 +58,7 @@ pub mod test {
                 "CREATE DATABASE ".to_string() + &runner.default_db,
             ];
             let test_sqls = vec![];
-            let _ = block_on(runner.execute_sqls(prepare_sqls, test_sqls));
+            let _ = block_on(runner.execute_sqls(&prepare_sqls, &test_sqls));
 
             runner
         }
@@ -72,8 +72,8 @@ pub mod test {
 
         pub fn execute_insert_sqls_and_get_binlogs(
             &mut self,
-            prepare_sqls: Vec<String>,
-            values: Vec<String>,
+            prepare_sqls: &Vec<String>,
+            values: &Vec<String>,
         ) {
             let insert_sql = format!(
                 "INSERT INTO {}.{} VALUES ",
@@ -84,32 +84,13 @@ pub mod test {
                 test_sqls.push(insert_sql.clone() + v.as_str());
             }
 
-            let events = block_on(self.execute_sqls_and_get_binlogs(prepare_sqls, test_sqls));
-            for data in events {
-                match data {
-                    EventData::WriteRows(event) => {
-                        self.insert_events.push(event);
-                    }
-                    // mysql8.0 with binlog transaction compression
-                    EventData::TransactionPayload(event) => {
-                        for uncompressed_event in event.uncompressed_events {
-                            match uncompressed_event.1 {
-                                EventData::WriteRows(event) => {
-                                    self.insert_events.push(event);
-                                }
-                                _ => {}
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-            }
+            block_on(self.execute_sqls_and_get_binlogs(prepare_sqls, &test_sqls));
         }
 
         pub fn execute_delete_sqls_and_get_binlogs(
             &mut self,
-            prepare_sqls: Vec<String>,
-            f_0_values: Vec<String>,
+            prepare_sqls: &Vec<String>,
+            f_0_values: &Vec<String>,
         ) {
             let mut test_sqls = Vec::with_capacity(f_0_values.capacity());
             if f_0_values.is_empty() {
@@ -127,76 +108,30 @@ pub mod test {
                 }
             }
 
-            let events = block_on(self.execute_sqls_and_get_binlogs(prepare_sqls, test_sqls));
-            for data in events {
-                match data {
-                    EventData::DeleteRows(event) => {
-                        self.delete_events.push(event);
-                    }
-                    // mysql8.0 with binlog transaction compression
-                    EventData::TransactionPayload(event) => {
-                        for uncompressed_event in event.uncompressed_events {
-                            match uncompressed_event.1 {
-                                EventData::DeleteRows(event) => {
-                                    self.delete_events.push(event);
-                                }
-                                _ => {}
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-            }
+            block_on(self.execute_sqls_and_get_binlogs(prepare_sqls, &test_sqls));
         }
 
         pub fn execute_update_sqls_and_get_binlogs(
             &mut self,
-            prepare_sqls: Vec<String>,
-            test_sqls: Vec<String>,
+            prepare_sqls: &Vec<String>,
+            test_sqls: &Vec<String>,
         ) {
-            let events = block_on(self.execute_sqls_and_get_binlogs(prepare_sqls, test_sqls));
-            for data in events {
-                match data {
-                    EventData::UpdateRows(event) => {
-                        self.update_events.push(event);
-                    }
-                    // mysql8.0 with binlog transaction compression
-                    EventData::TransactionPayload(event) => {
-                        for uncompressed_event in event.uncompressed_events {
-                            match uncompressed_event.1 {
-                                EventData::UpdateRows(event) => {
-                                    self.update_events.push(event);
-                                }
-                                _ => {}
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-            }
+            block_on(self.execute_sqls_and_get_binlogs(prepare_sqls, test_sqls));
         }
 
         pub fn execute_ddl_sqls_and_get_binlogs(
             &mut self,
-            prepare_sqls: Vec<String>,
-            test_sqls: Vec<String>,
+            prepare_sqls: &Vec<String>,
+            test_sqls: &Vec<String>,
         ) {
-            let events = block_on(self.execute_sqls_and_get_binlogs(prepare_sqls, test_sqls));
-            for data in events {
-                match data {
-                    EventData::Query(event) => {
-                        self.query_events.push(event);
-                    }
-                    _ => {}
-                }
-            }
+            block_on(self.execute_sqls_and_get_binlogs(prepare_sqls, test_sqls));
         }
 
-        async fn execute_sqls_and_get_binlogs(
+        pub async fn execute_sqls_and_get_binlogs(
             &mut self,
-            prepare_sqls: Vec<String>,
-            test_sqls: Vec<String>,
-        ) -> Vec<EventData> {
+            prepare_sqls: &Vec<String>,
+            test_sqls: &Vec<String>,
+        ) {
             // execute sqls, binlog_position will start from the first test sql, prepare sqls will be ignored.
             let (binlog_filename, binlog_position) =
                 self.execute_sqls(prepare_sqls, test_sqls).await.unwrap();
@@ -226,19 +161,53 @@ pub mod test {
 
             // wait for binlog parsing
             async_std::task::sleep(Duration::from_millis(self.binlog_parse_millis)).await;
-            let results = all_events.lock().unwrap().to_vec();
-            results
+
+            for data in all_events.lock().unwrap().to_vec() {
+                match data {
+                    EventData::WriteRows(event) => {
+                        self.insert_events.push(event);
+                    }
+                    // mysql8.0 with binlog transaction compression
+                    EventData::TransactionPayload(event) => {
+                        for uncompressed_event in event.uncompressed_events {
+                            match uncompressed_event.1 {
+                                EventData::WriteRows(event) => {
+                                    self.insert_events.push(event);
+                                }
+                                EventData::UpdateRows(event) => {
+                                    self.update_events.push(event);
+                                }
+                                EventData::DeleteRows(event) => {
+                                    self.delete_events.push(event);
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                    EventData::UpdateRows(event) => {
+                        self.update_events.push(event);
+                    }
+                    EventData::DeleteRows(event) => {
+                        self.delete_events.push(event);
+                    }
+                    EventData::Query(event) => {
+                        self.query_events.push(event);
+                    }
+                    _ => {}
+                }
+            }
         }
 
         async fn execute_sqls(
             &self,
-            prepare_sqls: Vec<String>,
-            test_sqls: Vec<String>,
+            prepare_sqls: &Vec<String>,
+            test_sqls: &Vec<String>,
         ) -> Result<(String, u32), BinlogError> {
             let mut authenticator = Authenticator::new(&self.db_url)?;
             let mut channel = authenticator.connect().await?;
 
             for sql in prepare_sqls {
+                println!("execute prepare sql: {}", sql);
                 CommandUtil::execute_sql(&mut channel, &sql).await?;
             }
 
@@ -247,6 +216,7 @@ pub mod test {
                 CommandUtil::fetch_binlog_info(&mut channel).await?;
 
             for sql in test_sqls {
+                println!("execute test sql: {}", sql);
                 CommandUtil::execute_sql(&mut channel, &sql).await?;
             }
 

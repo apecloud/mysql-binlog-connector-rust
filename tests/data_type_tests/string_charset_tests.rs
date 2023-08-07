@@ -112,7 +112,7 @@ mod test {
             runner.get_create_table_sql_with_one_field(data_type),
             init_sql,
         ];
-        runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, test_values);
+        runner.execute_insert_sqls_and_get_binlogs(&prepare_sqls, &test_values);
 
         for i in 0..check_values.len() {
             Assert::assert_bytes_eq(

@@ -93,7 +93,9 @@ impl ColumnValue {
             ColumnType::Double => ColumnValue::Double(cursor.read_f64::<LittleEndian>()?),
 
             ColumnType::NewDecimal => {
-                ColumnValue::Decimal(Self::parse_decimal(cursor, column_meta)?)
+                let precision = (column_meta & 0xFF) as usize;
+                let scale = (column_meta >> 8) as usize;
+                ColumnValue::Decimal(Self::parse_decimal(cursor, precision, scale)?)
             }
 
             ColumnType::Date => ColumnValue::Date(Self::parse_date(cursor)?),
@@ -136,7 +138,7 @@ impl ColumnValue {
                 ColumnValue::Set(cursor.read_int::<LittleEndian>(column_length as usize)? as u64)
             }
 
-            ColumnType::Json => ColumnValue::Blob(Self::parse_blob(cursor, column_meta)?),
+            ColumnType::Json => ColumnValue::Json(Self::parse_blob(cursor, column_meta)?),
 
             _ => {
                 return Err(BinlogError::UnsupportedColumnType {
@@ -257,7 +259,7 @@ impl ColumnValue {
         ))
     }
 
-    pub fn parse_string(
+    fn parse_string(
         cursor: &mut Cursor<&Vec<u8>>,
         column_meta: u16,
     ) -> Result<Vec<u8>, BinlogError> {
@@ -270,24 +272,20 @@ impl ColumnValue {
         cursor.read_bytes(size)
     }
 
-    pub fn parse_blob(
-        cursor: &mut Cursor<&Vec<u8>>,
-        column_meta: u16,
-    ) -> Result<Vec<u8>, BinlogError> {
+    fn parse_blob(cursor: &mut Cursor<&Vec<u8>>, column_meta: u16) -> Result<Vec<u8>, BinlogError> {
         let size = cursor.read_uint::<LittleEndian>(column_meta as usize)? as usize;
         cursor.read_bytes(size)
     }
 
     pub fn parse_decimal(
         cursor: &mut Cursor<&Vec<u8>>,
-        column_meta: u16,
+        precision: usize,
+        scale: usize,
     ) -> Result<String, BinlogError> {
         // Given a column to be DECIMAL(13,4), the numbers mean:
         // 13: precision, the maximum number of digits, the maximum precesion for DECIMAL is 65.
         // 4: scale, the number of digits to the right of the decimal point.
         // 13 - 4: integral, the maximum number of digits to the left of the decimal point.
-        let precision = (column_meta & 0xFF) as usize;
-        let scale = (column_meta >> 8) as usize;
         let integral = precision - scale;
 
         // A decimal is stored in binlog like following:

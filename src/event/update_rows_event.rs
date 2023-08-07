@@ -26,7 +26,7 @@ impl UpdateRowsEvent {
         let table_map_event = table_map_event_by_table_id.get(&table_id).unwrap();
 
         let mut rows: Vec<(RowEvent, RowEvent)> = Vec::new();
-        while cursor.position() < cursor.get_ref().len() as u64 - 1 {
+        while cursor.available() > 0 {
             let before = RowEvent::parse(cursor, table_map_event, &included_columns_before)?;
             let after = RowEvent::parse(cursor, table_map_event, &included_columns_after)?;
             rows.push((before, after));

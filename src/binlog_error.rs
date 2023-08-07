@@ -17,6 +17,8 @@ pub enum BinlogError {
     ParseError { error: url::ParseError },
 
     ErrorStack { error: openssl::error::ErrorStack },
+
+    ParseJsonError { error: String },
 }
 
 impl From<std::io::Error> for BinlogError {

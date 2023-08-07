@@ -27,7 +27,7 @@ mod test {
             "(".to_string() + &values[3].join(",") + ")",
             "(".to_string() + &values[4].join(",") + ")",
         ];
-        runner.execute_insert_sqls_and_get_binlogs(prepare_sqls, insert_test_values);
+        runner.execute_insert_sqls_and_get_binlogs(&prepare_sqls, &insert_test_values);
 
         // update
         let update_test_sqls = vec![
@@ -57,8 +57,8 @@ mod test {
             ),
         ];
         runner.execute_update_sqls_and_get_binlogs(
-            vec!["SET @@session.time_zone='UTC'".to_string()],
-            update_test_sqls,
+            &vec!["SET @@session.time_zone='UTC'".to_string()],
+            &update_test_sqls,
         );
 
         assert_eq!(runner.update_events.len(), 4);
