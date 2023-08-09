@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{binlog_error::BinlogError, ext::cursor_ext::CursorExt};
 
-use super::{row_event::RowEvent, table_map_event::TableMapEvent};
+use super::{event_header::EventHeader, row_event::RowEvent, table_map_event::TableMapEvent};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct DeleteRowsEvent {
@@ -20,7 +20,7 @@ impl DeleteRowsEvent {
         row_event_version: u8,
     ) -> Result<Self, BinlogError> {
         let (table_id, _column_count, included_columns) =
-            cursor.parse_rows_event_common_header(row_event_version)?;
+            EventHeader::parse_rows_event_common_header(cursor, row_event_version)?;
         let table_map_event = table_map_event_by_table_id.get(&table_id).unwrap();
 
         let mut rows: Vec<RowEvent> = Vec::new();

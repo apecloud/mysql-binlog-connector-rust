@@ -26,7 +26,7 @@ impl PacketChannel {
         let mut wtr = Vec::new();
         wtr.write_u24::<LittleEndian>(buf.len() as u32)?;
         wtr.write_u8(sequence)?;
-        Write::write(&mut wtr, &buf)?;
+        Write::write(&mut wtr, buf)?;
         self.stream.write_all(&wtr).await?;
         Ok(())
     }

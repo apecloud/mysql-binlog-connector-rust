@@ -20,7 +20,7 @@ impl ErrorPacket {
         let error_code = cursor.read_u16::<LittleEndian>()?;
         let mut sql_state = "".to_string();
 
-        if cursor.get_ref()[cursor.position() as usize] == '#' as u8 {
+        if cursor.get_ref()[cursor.position() as usize] == b'#' {
             cursor.seek(SeekFrom::Current(1))?;
             sql_state = cursor.read_string(5)?;
         }

@@ -28,7 +28,7 @@ impl QueryEvent {
         cursor.seek(SeekFrom::Current(status_vars_length))?;
 
         // Format: schema_length + 1, The currently selected database, as a null-terminated string.
-        let schema = cursor.read_string_without_terminater(schema_length as usize)?;
+        let schema = cursor.read_string_without_terminator(schema_length as usize)?;
 
         let mut query = String::new();
         cursor.read_to_string(&mut query)?;

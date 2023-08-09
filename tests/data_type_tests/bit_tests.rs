@@ -1,80 +1,43 @@
 #[cfg(test)]
 mod test {
 
+    use std::i128;
+
     use serial_test::serial;
 
-    use crate::{assert::test::Assert, test_runner::test::TestRunner};
+    use crate::runner::{assert::test::Assert, test_runner::test::TestRunner};
 
     #[test]
     #[serial]
     fn test_bit3() {
-        let mut runner = TestRunner::new();
-        let prepare_sqls = vec![runner.get_create_table_sql_with_one_field("BIT(3)".to_string())];
-        let values = vec![
-            "(0)".to_string(),
-            "(1)".to_string(),
-            "(2)".to_string(),
-            "(3)".to_string(),
-            "(4)".to_string(),
-            "(5)".to_string(),
-            "(6)".to_string(),
-            "(7)".to_string(),
-        ];
-        runner.execute_insert_sqls_and_get_binlogs(&prepare_sqls, &values);
-
-        Assert::assert_numeric_eq(&runner.insert_events[0].rows[0].column_values[0], 0);
-        Assert::assert_numeric_eq(&runner.insert_events[1].rows[0].column_values[0], 1);
-        Assert::assert_numeric_eq(&runner.insert_events[2].rows[0].column_values[0], 2);
-        Assert::assert_numeric_eq(&runner.insert_events[3].rows[0].column_values[0], 3);
-        Assert::assert_numeric_eq(&runner.insert_events[4].rows[0].column_values[0], 4);
-        Assert::assert_numeric_eq(&runner.insert_events[5].rows[0].column_values[0], 5);
-        Assert::assert_numeric_eq(&runner.insert_events[6].rows[0].column_values[0], 6);
-        Assert::assert_numeric_eq(&runner.insert_events[7].rows[0].column_values[0], 7);
+        let col_type = "BIT(3)";
+        let values = vec!["0", "1", "2", "3", "4", "5", "6", "7"];
+        run_bit_tests(col_type, &values);
     }
 
     #[test]
     #[serial]
     fn test_bit64() {
-        let mut runner = TestRunner::new();
-        let prepare_sqls = vec![runner.get_create_table_sql_with_one_field("BIT(64)".to_string())];
+        let col_type = "BIT(64)";
         let values = vec![
-            "(1234567890123)".to_string(),
-            "(2345678901234)".to_string(),
-            "(3456789012345)".to_string(),
-            "(4567890123456)".to_string(),
-            "(5678901234567)".to_string(),
-            "(6789012345678)".to_string(),
-            "(7890123456789)".to_string(),
+            "1234567890123",
+            "2345678901234",
+            "3456789012345",
+            "4567890123456",
+            "5678901234567",
+            "6789012345678",
+            "7890123456789",
         ];
-        runner.execute_insert_sqls_and_get_binlogs(&prepare_sqls, &values);
+        run_bit_tests(col_type, &values);
+    }
 
-        Assert::assert_numeric_eq(
-            &runner.insert_events[0].rows[0].column_values[0],
-            1234567890123,
-        );
-        Assert::assert_numeric_eq(
-            &runner.insert_events[1].rows[0].column_values[0],
-            2345678901234,
-        );
-        Assert::assert_numeric_eq(
-            &runner.insert_events[2].rows[0].column_values[0],
-            3456789012345,
-        );
-        Assert::assert_numeric_eq(
-            &runner.insert_events[3].rows[0].column_values[0],
-            4567890123456,
-        );
-        Assert::assert_numeric_eq(
-            &runner.insert_events[4].rows[0].column_values[0],
-            5678901234567,
-        );
-        Assert::assert_numeric_eq(
-            &runner.insert_events[5].rows[0].column_values[0],
-            6789012345678,
-        );
-        Assert::assert_numeric_eq(
-            &runner.insert_events[6].rows[0].column_values[0],
-            7890123456789,
-        );
+    fn run_bit_tests(col_type: &str, values: &Vec<&str>) {
+        let runner = TestRunner::run_one_col_test(col_type, values, &vec![]);
+        for i in 0..values.len() {
+            Assert::assert_numeric_eq(
+                &runner.insert_events[0].rows[i].column_values[0],
+                values[i].parse::<i128>().unwrap(),
+            );
+        }
     }
 }

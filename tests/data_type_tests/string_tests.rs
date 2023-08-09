@@ -4,169 +4,167 @@ mod test {
 
     use serial_test::serial;
 
-    use crate::{assert::test::Assert, test_runner::test::TestRunner};
+    use crate::runner::{assert::test::Assert, test_runner::test::TestRunner};
 
     // The visible character number range is 32-126
-    pub const MAX_TEST_STR_LENGTH: u8 = 95;
+    const MAX_TEST_STR_LENGTH: u8 = 95;
 
     #[test]
     #[serial]
     fn test_char_255() {
-        let (test_values, check_values) = generate_visible_char_values();
-        run_bytes_tests("CHAR(255)".to_string(), test_values, check_values);
+        let (values, check_values) = generate_visible_char_values();
+        run_bytes_tests("CHAR(255)", &values, &check_values);
 
-        let (test_values, check_values) = generate_trailing_space_values(false);
-        run_bytes_tests("CHAR(255)".to_string(), test_values, check_values);
+        let (values, check_values) = generate_trailing_space_values(false);
+        run_bytes_tests("CHAR(255)", &values, &check_values);
     }
 
     #[test]
     #[serial]
     fn test_varchar_255() {
-        let (test_values, check_values) = generate_visible_char_values();
-        run_bytes_tests("VARCHAR(255)".to_string(), test_values, check_values);
+        let (values, check_values) = generate_visible_char_values();
+        run_bytes_tests("VARCHAR(255)", &values, &check_values);
 
-        let (test_values, check_values) = generate_trailing_space_values(true);
-        run_bytes_tests("VARCHAR(255)".to_string(), test_values, check_values);
+        let (values, check_values) = generate_trailing_space_values(true);
+        run_bytes_tests("VARCHAR(255)", &values, &check_values);
     }
 
     #[test]
     #[serial]
     fn test_binary_255() {
-        let (test_values, check_values) = generate_visible_char_values();
-        run_bytes_tests("BINARY(255)".to_string(), test_values, check_values);
+        let (values, check_values) = generate_visible_char_values();
+        run_bytes_tests("BINARY(255)", &values, &check_values);
 
-        let (test_values, check_values) = generate_trailing_space_values(true);
-        run_bytes_tests("BINARY(255)".to_string(), test_values, check_values);
+        let (values, check_values) = generate_trailing_space_values(true);
+        run_bytes_tests("BINARY(255)", &values, &check_values);
 
-        let (test_values, check_values) = generate_trailing_nul_values(false);
-        run_bytes_tests("BINARY(255)".to_string(), test_values, check_values);
+        let (values, check_values) = generate_trailing_nul_values(false);
+        run_bytes_tests("BINARY(255)", &values, &check_values);
     }
 
     #[test]
     #[serial]
     fn test_varbinary_255() {
-        let (test_values, check_values) = generate_visible_char_values();
-        run_bytes_tests("VARBINARY(255)".to_string(), test_values, check_values);
+        let (values, check_values) = generate_visible_char_values();
+        run_bytes_tests("VARBINARY(255)", &values, &check_values);
 
-        let (test_values, check_values) = generate_trailing_space_values(true);
-        run_bytes_tests("VARBINARY(255)".to_string(), test_values, check_values);
+        let (values, check_values) = generate_trailing_space_values(true);
+        run_bytes_tests("VARBINARY(255)", &values, &check_values);
 
-        let (test_values, check_values) = generate_trailing_nul_values(true);
-        run_bytes_tests("VARBINARY(255)".to_string(), test_values, check_values);
+        let (values, check_values) = generate_trailing_nul_values(true);
+        run_bytes_tests("VARBINARY(255)", &values, &check_values);
     }
 
     #[test]
     #[serial]
     fn test_tinytext() {
-        let (test_values, check_values) = generate_visible_char_values();
-        run_bytes_tests("TINYTEXT".to_string(), test_values, check_values);
+        let (values, check_values) = generate_visible_char_values();
+        run_bytes_tests("TINYTEXT", &values, &check_values);
 
-        let (test_values, check_values) = generate_trailing_space_values(true);
-        run_bytes_tests("TINYTEXT".to_string(), test_values, check_values);
+        let (values, check_values) = generate_trailing_space_values(true);
+        run_bytes_tests("TINYTEXT", &values, &check_values);
 
-        let (test_values, check_values) = generate_trailing_nul_values(true);
-        run_bytes_tests("TINYTEXT".to_string(), test_values, check_values);
+        let (values, check_values) = generate_trailing_nul_values(true);
+        run_bytes_tests("TINYTEXT", &values, &check_values);
     }
 
     #[test]
     #[serial]
     fn test_text() {
-        let (test_values, check_values) = generate_visible_char_values();
-        run_bytes_tests("TEXT".to_string(), test_values, check_values);
+        let (values, check_values) = generate_visible_char_values();
+        run_bytes_tests("TEXT", &values, &check_values);
 
-        let (test_values, check_values) = generate_trailing_space_values(true);
-        run_bytes_tests("TEXT".to_string(), test_values, check_values);
+        let (values, check_values) = generate_trailing_space_values(true);
+        run_bytes_tests("TEXT", &values, &check_values);
 
-        let (test_values, check_values) = generate_trailing_nul_values(true);
-        run_bytes_tests("TEXT".to_string(), test_values, check_values);
+        let (values, check_values) = generate_trailing_nul_values(true);
+        run_bytes_tests("TEXT", &values, &check_values);
     }
 
     #[test]
     #[serial]
     fn test_mediumtext() {
-        let (test_values, check_values) = generate_visible_char_values();
-        run_bytes_tests("MEDIUMTEXT".to_string(), test_values, check_values);
+        let (values, check_values) = generate_visible_char_values();
+        run_bytes_tests("MEDIUMTEXT", &values, &check_values);
 
-        let (test_values, check_values) = generate_trailing_space_values(true);
-        run_bytes_tests("MEDIUMTEXT".to_string(), test_values, check_values);
+        let (values, check_values) = generate_trailing_space_values(true);
+        run_bytes_tests("MEDIUMTEXT", &values, &check_values);
 
-        let (test_values, check_values) = generate_trailing_nul_values(true);
-        run_bytes_tests("MEDIUMTEXT".to_string(), test_values, check_values);
+        let (values, check_values) = generate_trailing_nul_values(true);
+        run_bytes_tests("MEDIUMTEXT", &values, &check_values);
     }
 
     #[test]
     #[serial]
     fn test_longtext() {
-        let (test_values, check_values) = generate_visible_char_values();
-        run_bytes_tests("LONGTEXT".to_string(), test_values, check_values);
+        let (values, check_values) = generate_visible_char_values();
+        run_bytes_tests("LONGTEXT", &values, &check_values);
 
-        let (test_values, check_values) = generate_trailing_space_values(true);
-        run_bytes_tests("LONGTEXT".to_string(), test_values, check_values);
+        let (values, check_values) = generate_trailing_space_values(true);
+        run_bytes_tests("LONGTEXT", &values, &check_values);
 
-        let (test_values, check_values) = generate_trailing_nul_values(true);
-        run_bytes_tests("LONGTEXT".to_string(), test_values, check_values);
+        let (values, check_values) = generate_trailing_nul_values(true);
+        run_bytes_tests("LONGTEXT", &values, &check_values);
     }
 
     #[test]
     #[serial]
     fn test_tinyblob() {
-        let (test_values, check_values) = generate_visible_char_values();
-        run_bytes_tests("TINYBLOB".to_string(), test_values, check_values);
+        let (values, check_values) = generate_visible_char_values();
+        run_bytes_tests("TINYBLOB", &values, &check_values);
 
-        let (test_values, check_values) = generate_trailing_space_values(true);
-        run_bytes_tests("TINYBLOB".to_string(), test_values, check_values);
+        let (values, check_values) = generate_trailing_space_values(true);
+        run_bytes_tests("TINYBLOB", &values, &check_values);
 
-        let (test_values, check_values) = generate_trailing_nul_values(true);
-        run_bytes_tests("TINYBLOB".to_string(), test_values, check_values);
+        let (values, check_values) = generate_trailing_nul_values(true);
+        run_bytes_tests("TINYBLOB", &values, &check_values);
     }
 
     #[test]
     #[serial]
     fn test_blob() {
-        let (test_values, check_values) = generate_visible_char_values();
-        run_bytes_tests("BLOB".to_string(), test_values, check_values);
+        let (values, check_values) = generate_visible_char_values();
+        run_bytes_tests("BLOB", &values, &check_values);
 
-        let (test_values, check_values) = generate_trailing_space_values(true);
-        run_bytes_tests("BLOB".to_string(), test_values, check_values);
+        let (values, check_values) = generate_trailing_space_values(true);
+        run_bytes_tests("BLOB", &values, &check_values);
 
-        let (test_values, check_values) = generate_trailing_nul_values(true);
-        run_bytes_tests("BLOB".to_string(), test_values, check_values);
+        let (values, check_values) = generate_trailing_nul_values(true);
+        run_bytes_tests("BLOB", &values, &check_values);
     }
 
     #[test]
     #[serial]
     fn test_mediumblob() {
-        let (test_values, check_values) = generate_visible_char_values();
-        run_bytes_tests("MEDIUMBLOB".to_string(), test_values, check_values);
+        let (values, check_values) = generate_visible_char_values();
+        run_bytes_tests("MEDIUMBLOB", &values, &check_values);
 
-        let (test_values, check_values) = generate_trailing_space_values(true);
-        run_bytes_tests("MEDIUMBLOB".to_string(), test_values, check_values);
+        let (values, check_values) = generate_trailing_space_values(true);
+        run_bytes_tests("MEDIUMBLOB", &values, &check_values);
 
-        let (test_values, check_values) = generate_trailing_nul_values(true);
-        run_bytes_tests("MEDIUMBLOB".to_string(), test_values, check_values);
+        let (values, check_values) = generate_trailing_nul_values(true);
+        run_bytes_tests("MEDIUMBLOB", &values, &check_values);
     }
 
     #[test]
     #[serial]
     fn test_longblob() {
-        let (test_values, check_values) = generate_visible_char_values();
-        run_bytes_tests("LONGBLOB".to_string(), test_values, check_values);
+        let (values, check_values) = generate_visible_char_values();
+        run_bytes_tests("LONGBLOB", &values, &check_values);
 
-        let (test_values, check_values) = generate_trailing_space_values(true);
-        run_bytes_tests("LONGBLOB".to_string(), test_values, check_values);
+        let (values, check_values) = generate_trailing_space_values(true);
+        run_bytes_tests("LONGBLOB", &values, &check_values);
 
-        let (test_values, check_values) = generate_trailing_nul_values(true);
-        run_bytes_tests("LONGBLOB".to_string(), test_values, check_values);
+        let (values, check_values) = generate_trailing_nul_values(true);
+        run_bytes_tests("LONGBLOB", &values, &check_values);
     }
 
-    fn run_bytes_tests(data_type: String, test_values: Vec<String>, check_values: Vec<Vec<u8>>) {
-        let mut runner = TestRunner::new();
-        let prepare_sqls = vec![runner.get_create_table_sql_with_one_field(data_type)];
-        runner.execute_insert_sqls_and_get_binlogs(&prepare_sqls, &test_values);
-
+    fn run_bytes_tests(col_type: &str, values: &Vec<String>, check_values: &Vec<Vec<u8>>) {
+        let values: Vec<&str> = values.into_iter().map(|i| i.as_str()).collect();
+        let runner = TestRunner::run_one_col_test(col_type, &values, &vec![]);
         for i in 0..check_values.len() {
             Assert::assert_bytes_eq(
-                &runner.insert_events[i].rows[0].column_values[0],
+                &runner.insert_events[0].rows[i].column_values[0],
                 check_values[i].clone(),
             );
         }
@@ -202,7 +200,7 @@ mod test {
             check_values.push(bytes);
         }
 
-        (get_test_values(values), check_values)
+        (get_test_values(&values), check_values)
     }
 
     fn generate_trailing_space_values(
@@ -234,7 +232,7 @@ mod test {
             check_values.push(bytes);
         }
 
-        (get_test_values(values), check_values)
+        (get_test_values(&values), check_values)
     }
 
     fn generate_trailing_nul_values(
@@ -263,10 +261,10 @@ mod test {
             check_values.push(vec![0, 97, 0, 97]);
         }
 
-        (get_test_values(values), check_values)
+        (get_test_values(&values), check_values)
     }
 
-    fn get_test_values(values: Vec<String>) -> Vec<String> {
+    fn get_test_values(values: &Vec<String>) -> Vec<String> {
         // ["a", "ab"] -> ["('a')", "('ab')"]
         let mut test_values = Vec::new();
         for s in values.clone() {

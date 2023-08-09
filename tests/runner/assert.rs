@@ -1,11 +1,11 @@
-pub mod test {
+pub(crate) mod test {
     use mysql_binlog_connector_rust::column::column_value::ColumnValue;
 
     pub struct Assert {}
 
     #[allow(dead_code)]
     impl Assert {
-        pub fn assert_numeric_eq(column_value: &ColumnValue, value: i64) {
+        pub fn assert_numeric_eq(column_value: &ColumnValue, value: i128) {
             match column_value {
                 ColumnValue::Tiny(v) => {
                     assert_eq!(*v, value as i8);
@@ -31,7 +31,9 @@ pub mod test {
                 ColumnValue::Bit(v) => {
                     assert_eq!(*v, value as u64);
                 }
-                _ => {}
+                _ => {
+                    assert!(false)
+                }
             }
         }
 
@@ -43,7 +45,9 @@ pub mod test {
                 ColumnValue::Set(v) => {
                     assert_eq!(*v, value as u64);
                 }
-                _ => {}
+                _ => {
+                    assert!(false)
+                }
             }
         }
 
@@ -52,7 +56,9 @@ pub mod test {
                 ColumnValue::Float(v) => {
                     assert_eq!(*v, value);
                 }
-                _ => {}
+                _ => {
+                    assert!(false)
+                }
             }
         }
 
@@ -61,7 +67,9 @@ pub mod test {
                 ColumnValue::Double(v) => {
                     assert_eq!(*v, value);
                 }
-                _ => {}
+                _ => {
+                    assert!(false)
+                }
             }
         }
 
@@ -70,7 +78,9 @@ pub mod test {
                 ColumnValue::String(v) | ColumnValue::Blob(v) => {
                     assert_eq!(*v, value);
                 }
-                _ => {}
+                _ => {
+                    assert!(false)
+                }
             }
         }
 
@@ -82,7 +92,9 @@ pub mod test {
                 | ColumnValue::Decimal(v) => {
                     assert_eq!(*v, value);
                 }
-                _ => {}
+                _ => {
+                    assert!(false)
+                }
             }
         }
 
@@ -91,7 +103,9 @@ pub mod test {
                 ColumnValue::Timestamp(v) => {
                     assert_eq!(*v, value);
                 }
-                _ => {}
+                _ => {
+                    assert!(false)
+                }
             }
         }
 

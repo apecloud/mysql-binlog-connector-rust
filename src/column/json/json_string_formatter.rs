@@ -90,7 +90,7 @@ impl JsonStringFormatter {
         } else if value < 100 {
             self.sb.push_str("00");
         } else if value < 1000 {
-            self.sb.push_str("0");
+            self.sb.push('0');
         }
         self.sb.push_str(&value.to_string());
     }
@@ -105,7 +105,7 @@ impl JsonStringFormatter {
         } else if value < 10000 {
             self.sb.push_str("00");
         } else if value < 100000 {
-            self.sb.push_str("0");
+            self.sb.push('0');
         };
 
         if trim_trailing_zeros {
@@ -208,7 +208,7 @@ impl JsonFormatter for JsonStringFormatter {
 
     fn value_date(&mut self, year: i32, month: i32, day: i32) {
         self.sb.push('"');
-        self.append_date(year, month as i32, day as i32);
+        self.append_date(year, month, day);
         self.sb.push('"');
     }
 

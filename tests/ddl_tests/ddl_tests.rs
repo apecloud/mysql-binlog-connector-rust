@@ -3,69 +3,68 @@ mod test {
 
     use serial_test::serial;
 
-    use crate::test_runner::test::TestRunner;
+    use crate::runner::test_runner::test::TestRunner;
 
     #[test]
     #[serial]
     fn test_ddl_basic() {
-        let prepare_sqls = vec!["DROP DATABASE IF EXISTS db_test_ddl".to_string()];
+        let prepare_sqls = vec!["DROP DATABASE IF EXISTS db_test_ddl"];
 
         let test_sqls = vec![
-            "CREATE DATABASE db_test_ddl".to_string(),
-            "CREATE TABLE db_test_ddl.tb_test_ddl(id INT AUTO_INCREMENT PRIMARY KEY NOT NULL, name VARCHAR(255))".to_string(),
+            "CREATE DATABASE db_test_ddl",
+            "CREATE TABLE db_test_ddl.tb_test_ddl(id INT AUTO_INCREMENT PRIMARY KEY NOT NULL, name VARCHAR(255))",
 
-            "ALTER TABLE db_test_ddl.tb_test_ddl ADD COLUMN age INT".to_string(),
-            "ALTER TABLE db_test_ddl.tb_test_ddl ADD INDEX idx_name(name)".to_string(),
-            "ALTER TABLE db_test_ddl.tb_test_ddl ADD CONSTRAINT UNIQUE KEY(name)".to_string(),
-            "ALTER TABLE db_test_ddl.tb_test_ddl DROP COLUMN age".to_string(),
-            "ALTER TABLE db_test_ddl.tb_test_ddl DROP INDEX idx_name".to_string(),
-            "ALTER TABLE db_test_ddl.tb_test_ddl DROP INDEX name".to_string(),
+            "ALTER TABLE db_test_ddl.tb_test_ddl ADD COLUMN age INT",
+            "ALTER TABLE db_test_ddl.tb_test_ddl ADD INDEX idx_name(name)",
+            "ALTER TABLE db_test_ddl.tb_test_ddl ADD CONSTRAINT UNIQUE KEY(name)",
+            "ALTER TABLE db_test_ddl.tb_test_ddl DROP COLUMN age",
+            "ALTER TABLE db_test_ddl.tb_test_ddl DROP INDEX idx_name",
+            "ALTER TABLE db_test_ddl.tb_test_ddl DROP INDEX name",
 
             // The binlog for CREATE VIEW will be like: "CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`%` SQL SECURITY DEFINER VIEW `db_test_ddl`.`tb_test_ddl_v1` AS SELECT * FROM db_test_ddl.tb_test_ddl"
-            // "CREATE VIEW db_test_ddl.tb_test_ddl_v1 AS SELECT * FROM db_test_ddl.tb_test_ddl".to_string(),
-            // "DROP VIEW db_test_ddl.tb_test_ddl_v1".to_string(),
+            // "CREATE VIEW db_test_ddl.tb_test_ddl_v1 AS SELECT * FROM db_test_ddl.tb_test_ddl",
+            // "DROP VIEW db_test_ddl.tb_test_ddl_v1",
 
-            "RENAME TABLE db_test_ddl.tb_test_ddl TO db_test_ddl.tb_test_ddl_2".to_string(),
-            "TRUNCATE TABLE db_test_ddl.tb_test_ddl_2".to_string(),
-            "DROP TABLE db_test_ddl.tb_test_ddl_2".to_string(),
-            "DROP DATABASE db_test_ddl".to_string(),
+            "RENAME TABLE db_test_ddl.tb_test_ddl TO db_test_ddl.tb_test_ddl_2",
+            "TRUNCATE TABLE db_test_ddl.tb_test_ddl_2",
+            "DROP TABLE db_test_ddl.tb_test_ddl_2",
+            "DROP DATABASE db_test_ddl",
         ];
 
-        run_sql_and_check_binlog(prepare_sqls, test_sqls, false);
+        run_sql_and_check_binlog(&prepare_sqls, &test_sqls, false);
     }
 
     #[test]
     #[serial]
     fn test_ddl_with_quotes() {
-        let prepare_sqls = vec!["DROP DATABASE IF EXISTS `db_test_ddl`".to_string()];
+        let prepare_sqls = vec!["DROP DATABASE IF EXISTS `db_test_ddl`"];
         let test_sqls = vec![
-            "CREATE DATABASE `db_test_ddl`".to_string(),
-            "CREATE TABLE `db_test_ddl`.`tb_test_ddl`(`id` INT AUTO_INCREMENT PRIMARY KEY NOT NULL, `name` VARCHAR(255))".to_string(),
+            "CREATE DATABASE `db_test_ddl`",
+            "CREATE TABLE `db_test_ddl`.`tb_test_ddl`(`id` INT AUTO_INCREMENT PRIMARY KEY NOT NULL, `name` VARCHAR(255))",
         ];
-        run_sql_and_check_binlog(prepare_sqls, test_sqls, true);
+        run_sql_and_check_binlog(&prepare_sqls, &test_sqls, true);
     }
 
     #[test]
     #[serial]
     fn test_ddl_different_cases() {
-        let prepare_sqls = vec!["DROP DATABASE IF EXISTS db_TEST_ddl".to_string()];
+        let prepare_sqls = vec!["DROP DATABASE IF EXISTS db_TEST_ddl"];
         let test_sqls = vec![
-            "Create DATAbase db_TEST_ddl".to_string(),
-            "Create Table db_TEST_ddl.tb_TEST_ddl(Id INT AUTO_INCREMENT PRIMARY KEY NOT NULL, Name VARCHAR(255))".to_string(),
+            "Create DATAbase db_TEST_ddl",
+            "Create Table db_TEST_ddl.tb_TEST_ddl(Id INT AUTO_INCREMENT PRIMARY KEY NOT NULL, Name VARCHAR(255))",
         ];
-        run_sql_and_check_binlog(prepare_sqls, test_sqls, false);
+        run_sql_and_check_binlog(&prepare_sqls, &test_sqls, false);
     }
 
-    fn run_sql_and_check_binlog(
-        prepare_sqls: Vec<String>,
-        test_sqls: Vec<String>,
-        with_quotes: bool,
-    ) {
+    fn run_sql_and_check_binlog(prepare_sqls: &[&str], test_sqls: &[&str], with_quotes: bool) {
+        let prepare_sqls: Vec<String> = prepare_sqls.into_iter().map(|i| i.to_string()).collect();
+        let test_sqls: Vec<String> = test_sqls.into_iter().map(|i| i.to_string()).collect();
+
         let mut runner = TestRunner::new();
-        runner.execute_ddl_sqls_and_get_binlogs(&prepare_sqls, &test_sqls);
+        runner.execute_sqls_and_get_binlogs(&prepare_sqls, &test_sqls);
         for i in 0..test_sqls.len() {
-            // since comments will be added to ddl sql in binlog, here we check contain instead of equal.
-            // example: the binlog for "drop table db_test_ddl.tb_test_ddl_2" maybe
+            // since comments may be added to ddl sql in binlog, here we check contain instead of equal.
+            // example: the binlog for "drop table db_test_ddl.tb_test_ddl_2" may be
             // "drop table db_test_ddl.tb_test_ddl_2 /* generated by server */"
             if with_quotes {
                 assert!(runner.query_events[i]
@@ -73,9 +72,6 @@ mod test {
                     .to_lowercase()
                     .contains(&test_sqls[i].to_lowercase()));
             } else {
-                // println!("{}", Q_EVENTS[i].query.to_lowercase().replace("`", ""));
-                // println!("{}", &test_sqls[i].to_lowercase());
-
                 assert!(runner.query_events[i]
                     .query
                     .to_lowercase()

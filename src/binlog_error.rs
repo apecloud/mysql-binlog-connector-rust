@@ -1,58 +1,34 @@
-#[derive(Debug)]
+use thiserror::Error;
+
+#[derive(Error, Debug)]
 pub enum BinlogError {
-    UnsupportedColumnType { error: String },
+    #[error("unsupported column type: {0}")]
+    UnsupportedColumnType(String),
 
-    ReadBinlogError { error: String },
+    #[error("unexpected binlog data: {0}")]
+    UnexpectedData(String),
 
-    MysqlError { error: String },
+    #[error("connect error: {0}")]
+    ConnectError(String),
 
-    FmtError { error: std::fmt::Error },
+    #[error("fmt error: {0}")]
+    FmtError(#[from] std::fmt::Error),
 
-    ParseIntError { error: std::num::ParseIntError },
+    #[error("parse int error: {0}")]
+    ParseIntError(#[from] std::num::ParseIntError),
 
-    IoError { error: std::io::Error },
+    #[error("io error: {0}")]
+    IoError(#[from] std::io::Error),
 
-    FromUtf8Error { error: std::string::FromUtf8Error },
+    #[error("parse utf8 error: {0}")]
+    FromUtf8Error(#[from] std::string::FromUtf8Error),
 
-    ParseError { error: url::ParseError },
+    #[error("parse url error: {0}")]
+    ParseUrlError(#[from] url::ParseError),
 
-    ErrorStack { error: openssl::error::ErrorStack },
+    #[error("open-ssl error: {0}")]
+    OpenSslError(#[from] openssl::error::ErrorStack),
 
-    ParseJsonError { error: String },
-}
-
-impl From<std::io::Error> for BinlogError {
-    fn from(err: std::io::Error) -> Self {
-        Self::IoError { error: err }
-    }
-}
-
-impl From<std::string::FromUtf8Error> for BinlogError {
-    fn from(err: std::string::FromUtf8Error) -> Self {
-        Self::FromUtf8Error { error: err }
-    }
-}
-
-impl From<std::fmt::Error> for BinlogError {
-    fn from(err: std::fmt::Error) -> Self {
-        Self::FmtError { error: err }
-    }
-}
-
-impl From<std::num::ParseIntError> for BinlogError {
-    fn from(err: std::num::ParseIntError) -> Self {
-        Self::ParseIntError { error: err }
-    }
-}
-
-impl From<url::ParseError> for BinlogError {
-    fn from(err: url::ParseError) -> Self {
-        Self::ParseError { error: err }
-    }
-}
-
-impl From<openssl::error::ErrorStack> for BinlogError {
-    fn from(err: openssl::error::ErrorStack) -> Self {
-        Self::ErrorStack { error: err }
-    }
+    #[error("parse json error: {0}")]
+    ParseJsonError(String),
 }

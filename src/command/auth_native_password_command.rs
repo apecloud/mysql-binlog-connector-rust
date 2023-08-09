@@ -47,7 +47,7 @@ impl AuthNativePasswordCommand {
         // encrypted password
         let encrypted_password = Self::encrypt_password_sha1(&self.password, &self.scramble)?;
         buf.write_u8(encrypted_password.len() as u8)?;
-        buf.write(&encrypted_password)?;
+        buf.write_all(&encrypted_password)?;
 
         if !self.schema.is_empty() {
             buf.write_null_terminated_string(&self.schema)?;
