@@ -592,7 +592,7 @@ mod test {
 
         let runner = TestRunner::run_one_col_test("JSON", &str_values, &vec![]);
 
-        if expected_values.len() == origin_values.len() {
+        if !expected_values.is_empty() {
             let mut binlog_values = Vec::new();
             for i in 0..origin_values.len() {
                 if let Ok(json_string) =
