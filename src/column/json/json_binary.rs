@@ -134,14 +134,14 @@ impl JsonBinary<'_> {
 
         if !is_array {
             // Read each key ...
-            for i in 0..num_elements as usize {
-                let skip_bytes = keys[i].index + object_offset - self.reader.position();
+            for key in keys.iter_mut() {
+                let skip_bytes = key.index + object_offset - self.reader.position();
                 // Skip to a start of a field name if the current position does not point to it
                 // This can happen for MySQL 8
                 if skip_bytes != 0 {
                     self.reader.seek(SeekFrom::Current(skip_bytes as i64))?;
                 }
-                keys[i].name = self.read_as_string(keys[i].length)?;
+                key.name = self.read_as_string(key.length)?;
             }
         }
 
@@ -278,7 +278,7 @@ impl JsonBinary<'_> {
         let hour = (value >> 12) % (1 << 10); // 10 bits starting at 12th
         let min = (value >> 6) % (1 << 6); // 6 bits starting at 6th
         let sec = value % (1 << 6); // 6 bits starting at 0th
-        let hour = if negative { hour * -1 } else { hour };
+        let hour = if negative { -hour } else { hour };
         let micro_seconds = (raw % (1 << 24)) as u32;
         formatter.value_time(hour as i32, min as i32, sec as i32, micro_seconds as i32);
         Ok(())
@@ -324,7 +324,7 @@ impl JsonBinary<'_> {
         length: usize,
         formatter: &mut F,
     ) -> Result<(), BinlogError> {
-        let mut bytes = vec![0; length as usize];
+        let mut bytes = vec![0; length];
         self.reader.read_exact(&mut bytes)?;
         formatter.value_opaque(type_, &bytes);
         Ok(())
@@ -365,12 +365,12 @@ impl JsonBinary<'_> {
         };
 
         if result > max_value {
-            return Err(BinlogError::ParseJsonError{error:format!(
-                "The {} the JSON document is {} and is too big for the binary form of the document ({})",
+            return Err(BinlogError::ParseJsonError(format!(
+                "{}, the JSON document is {} and is too big for the binary form of the document ({})",
                 desc,
                 result,
                 max_value
-            )});
+            )));
         }
 
         Ok(result)
@@ -420,9 +420,9 @@ impl JsonBinary<'_> {
             }
         }
 
-        Err(BinlogError::ParseJsonError {
-            error: "Unexpected byte sequence".to_string(),
-        })
+        Err(BinlogError::ParseJsonError(
+            "Unexpected byte sequence".into(),
+        ))
     }
 
     fn read_literal(&mut self) -> Result<Option<bool>, BinlogError> {
@@ -431,9 +431,10 @@ impl JsonBinary<'_> {
             0x00 => Ok(None),
             0x01 => Ok(Some(true)),
             0x02 => Ok(Some(false)),
-            _ => Err(BinlogError::ParseJsonError {
-                error: format!("Unexpected value: '{}' for literal", self.as_hex(b)),
-            }),
+            _ => Err(BinlogError::ParseJsonError(format!(
+                "Unexpected value: '{}' for literal",
+                self.as_hex(b)
+            ))),
         }
     }
 
@@ -442,9 +443,10 @@ impl JsonBinary<'_> {
         if let Some(result) = ValueType::by_code(b) {
             Ok(result)
         } else {
-            Err(BinlogError::ParseJsonError {
-                error: format!("Unknown value type code: '{}'", self.as_hex(b)),
-            })
+            Err(BinlogError::ParseJsonError(format!(
+                "Unknown value type code: '{}'",
+                self.as_hex(b)
+            )))
         }
     }
 

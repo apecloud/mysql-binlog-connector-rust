@@ -30,9 +30,7 @@ impl BinlogParser {
         stream.read_exact(&mut magic)?;
         match magic {
             MAGIC_VALUE => Ok(()),
-            _ => Err(BinlogError::ReadBinlogError {
-                error: "bad magic".to_string(),
-            }),
+            _ => Err(BinlogError::UnexpectedData("bad magic".into())),
         }
     }
 

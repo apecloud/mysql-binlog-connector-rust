@@ -51,10 +51,10 @@ impl CommandUtil {
         channel: &mut PacketChannel,
     ) -> Result<(String, u32), BinlogError> {
         let result_sets = Self::execute_query(channel, "show master status").await?;
-        if result_sets.len() == 0 {
-            return Err(BinlogError::MysqlError {
-                error: "failed to fetch binlog filename and position".to_string(),
-            });
+        if result_sets.is_empty() {
+            return Err(BinlogError::ConnectError(
+                "failed to fetch binlog filename and position".into(),
+            ));
         }
         let binlog_filename = result_sets[0].values[0].clone();
         let binlog_position = result_sets[0].values[1].clone().parse::<u32>()?;
@@ -67,7 +67,7 @@ impl CommandUtil {
         let result_set_rows =
             Self::execute_query(channel, "select @@global.binlog_checksum").await?;
         let mut checksum_name = "";
-        if result_set_rows.len() > 0 {
+        if !result_set_rows.is_empty() {
             checksum_name = result_set_rows[0].values[0].as_str();
         }
         Ok(ChecksumType::from_name(checksum_name))
@@ -105,20 +105,19 @@ impl CommandUtil {
         match buf[0] {
             MysqlRespCode::OK => Ok(()),
 
-            MysqlRespCode::ERROR => Self::check_error_packet(&buf),
+            MysqlRespCode::ERROR => Self::check_error_packet(buf),
 
-            _ => Err(BinlogError::MysqlError {
-                error: "connect mysql failed".to_string(),
-            }),
+            _ => Err(BinlogError::ConnectError("connect mysql failed".into())),
         }
     }
 
     pub fn check_error_packet(buf: &Vec<u8>) -> Result<(), BinlogError> {
         if buf[0] == MysqlRespCode::ERROR {
             let error_packet = ErrorPacket::new(buf)?;
-            return Err(BinlogError::MysqlError {
-                error: error_packet.error_message,
-            });
+            return Err(BinlogError::ConnectError(format!(
+                "connect mysql failed: {}",
+                error_packet.error_message
+            )));
         }
         Ok(())
     }

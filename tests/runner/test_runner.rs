@@ -1,6 +1,5 @@
-pub mod test {
+pub(crate) mod test {
     use std::{
-        env,
         sync::{Arc, Mutex},
         thread,
         time::Duration,
@@ -16,6 +15,8 @@ pub mod test {
             update_rows_event::UpdateRowsEvent, write_rows_event::WriteRowsEvent,
         },
     };
+
+    use crate::runner::{env::test::Env, mock::test::Mock};
 
     pub struct TestRunner {
         pub insert_events: Vec<WriteRowsEvent>,
@@ -33,23 +34,27 @@ pub mod test {
     impl TestRunner {
         pub fn new() -> TestRunner {
             // load environment variables
-            let env_path = env::current_dir().unwrap().join("tests/.env");
-            dotenv::from_path(env_path).unwrap();
-            let db_url = env::var("db_url").unwrap();
-            let server_id: u64 = env::var("server_id").unwrap().parse().unwrap();
-            let default_db = env::var("default_db").unwrap();
-            let default_tb = env::var("default_tb").unwrap();
-
+            let env = Env::load_vars();
             let runner = TestRunner {
                 insert_events: Vec::new(),
                 update_events: Vec::new(),
                 delete_events: Vec::new(),
                 query_events: Vec::new(),
-                binlog_parse_millis: 100,
-                db_url,
-                server_id,
-                default_db,
-                default_tb,
+                db_url: env.get(Env::DB_URL).unwrap().to_string(),
+                default_db: env.get(Env::DEFAULT_DB).unwrap().to_string(),
+                default_tb: env.get(Env::DEFAULT_TB).unwrap().to_string(),
+                server_id: env
+                    .get(Env::SERVER_ID)
+                    .unwrap()
+                    .to_string()
+                    .parse::<u64>()
+                    .unwrap(),
+                binlog_parse_millis: env
+                    .get(Env::BINLOG_PARSE_MILLIS)
+                    .unwrap()
+                    .to_string()
+                    .parse::<u64>()
+                    .unwrap(),
             };
 
             // run init sqls to prepare test dabase
@@ -63,71 +68,32 @@ pub mod test {
             runner
         }
 
-        pub fn get_create_table_sql_with_one_field(&self, field_type: String) -> String {
-            format!(
-                "CREATE TABLE {}.{} (f_0 {})",
-                self.default_db, self.default_tb, field_type
-            )
+        pub fn run_one_col_test(
+            col_type: &str,
+            values: &[&str],
+            prepare_sqls: &[&str],
+        ) -> TestRunner {
+            let mut runner = TestRunner::new();
+            let create_sql = Mock::one_col_create_sql(col_type);
+            let insert_sql = Mock::one_col_insert_sql(values);
+
+            let mut prepare_sqls: Vec<String> =
+                prepare_sqls.into_iter().map(|i| i.to_string()).collect();
+            prepare_sqls.push(create_sql);
+
+            runner.execute_sqls_and_get_binlogs(&prepare_sqls, &vec![insert_sql]);
+            runner
         }
 
-        pub fn execute_insert_sqls_and_get_binlogs(
-            &mut self,
-            prepare_sqls: &Vec<String>,
-            values: &Vec<String>,
-        ) {
-            let insert_sql = format!(
-                "INSERT INTO {}.{} VALUES ",
-                self.default_db, self.default_tb
-            );
-            let mut test_sqls = Vec::with_capacity(values.capacity());
-            for v in values {
-                test_sqls.push(insert_sql.clone() + v.as_str());
-            }
-
-            block_on(self.execute_sqls_and_get_binlogs(prepare_sqls, &test_sqls));
-        }
-
-        pub fn execute_delete_sqls_and_get_binlogs(
-            &mut self,
-            prepare_sqls: &Vec<String>,
-            f_0_values: &Vec<String>,
-        ) {
-            let mut test_sqls = Vec::with_capacity(f_0_values.capacity());
-            if f_0_values.is_empty() {
-                test_sqls.push(format!(
-                    "DELETE FROM {}.{}",
-                    self.default_db, self.default_tb
-                ));
-            } else {
-                let delete_sql = format!(
-                    "DELETE FROM {}.{} WHERE f_0 in ",
-                    self.default_db, self.default_tb
-                );
-                for v in f_0_values {
-                    test_sqls.push(delete_sql.clone() + v.as_str());
-                }
-            }
-
-            block_on(self.execute_sqls_and_get_binlogs(prepare_sqls, &test_sqls));
-        }
-
-        pub fn execute_update_sqls_and_get_binlogs(
+        pub fn execute_sqls_and_get_binlogs(
             &mut self,
             prepare_sqls: &Vec<String>,
             test_sqls: &Vec<String>,
         ) {
-            block_on(self.execute_sqls_and_get_binlogs(prepare_sqls, test_sqls));
+            block_on(self.execute_sqls_and_get_binlogs_internal(&prepare_sqls, &test_sqls));
         }
 
-        pub fn execute_ddl_sqls_and_get_binlogs(
-            &mut self,
-            prepare_sqls: &Vec<String>,
-            test_sqls: &Vec<String>,
-        ) {
-            block_on(self.execute_sqls_and_get_binlogs(prepare_sqls, test_sqls));
-        }
-
-        pub async fn execute_sqls_and_get_binlogs(
+        async fn execute_sqls_and_get_binlogs_internal(
             &mut self,
             prepare_sqls: &Vec<String>,
             test_sqls: &Vec<String>,
@@ -221,6 +187,12 @@ pub mod test {
             }
 
             Ok((binlog_filename, binlog_position))
+        }
+    }
+
+    impl Default for TestRunner {
+        fn default() -> Self {
+            Self::new()
         }
     }
 }

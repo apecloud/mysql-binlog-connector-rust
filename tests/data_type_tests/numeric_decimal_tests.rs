@@ -3,7 +3,7 @@ mod test {
 
     use serial_test::serial;
 
-    use crate::{assert::test::Assert, test_runner::test::TestRunner};
+    use crate::runner::{assert::test::Assert, mock::test::Mock, test_runner::test::TestRunner};
 
     // refer to: https://dev.mysql.com/doc/refman/8.0/en/data-types.html
     // refer to: https://dev.mysql.com/doc/refman/8.0/en/fixed-point-types.html
@@ -76,12 +76,16 @@ mod test {
     }
 
     fn run_decimal_tests(runner: &mut TestRunner, precision: u8, scale: u8) {
-        let data_type = format!("DECIMAL({},{})", precision, scale);
-        let prepare_sqls = vec![runner.get_create_table_sql_with_one_field(data_type)];
+        let col_type = format!("DECIMAL({},{})", precision, scale);
+        let prepare_sqls = vec![Mock::one_col_create_sql(&col_type)];
 
-        let (test_values, check_values) = generate_decimal_values(precision, scale);
-        runner.execute_insert_sqls_and_get_binlogs(&prepare_sqls, &test_values);
+        let (values, check_values) = generate_decimal_values(precision, scale);
+        let mut insert_sqls = vec![];
+        for v in values {
+            insert_sqls.push(Mock::one_col_insert_sql(&vec![v.as_str()]));
+        }
 
+        runner.execute_sqls_and_get_binlogs(&prepare_sqls, &insert_sqls);
         for i in 0..check_values.len() {
             Assert::assert_string_eq(
                 &runner.insert_events[i].rows[0].column_values[0],

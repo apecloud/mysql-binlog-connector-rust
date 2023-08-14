@@ -31,6 +31,6 @@ async fn start_client(url: String, server_id: u64, binlog_filename: String, binl
 
     loop {
         let (_header, data) = stream.read().await.unwrap();
-        println!("{}", format!("recevied data: {:?}", data));
+        println!("recevied data: {:?}", data);
     }
 }

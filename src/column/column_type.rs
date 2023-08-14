@@ -4,9 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::binlog_error::BinlogError;
 
-/**
- * Refer to: https://dev.mysql.com/doc/dev/mysql-server/latest/classbinary__log_1_1Table__map__event.html#Table_table_map_event_column_types
- */
+/// Refer to: https://dev.mysql.com/doc/dev/mysql-server/latest/classbinary__log_1_1Table__map__event.html#Table_table_map_event_column_types
 #[derive(Debug, Deserialize, Serialize, Clone, IntoPrimitive, TryFromPrimitive)]
 #[repr(i16)]
 pub enum ColumnType {
@@ -50,11 +48,9 @@ impl ColumnType {
         ColumnType::try_from(code as i16).unwrap()
     }
 
-    /**
-     * The column type of MYSQL_TYPE_STRING and MYSQL_TYPE_ENUM are String in binlog, we need to get
-     * the real column type for parsing column values.
-     * Refer to: https://github.com/mysql/mysql-server/blob/5.7/sql/log_event.cc#L2047
-     */
+    /// The column type of MYSQL_TYPE_STRING and MYSQL_TYPE_ENUM are String in binlog, we need to get
+    /// the real column type for parsing column values.
+    /// Refer to: https://github.com/mysql/mysql-server/blob/5.7/sql/log_event.cc#L2047
     pub fn parse_string_column_meta(
         column_meta: u16,
         column_type: u8,

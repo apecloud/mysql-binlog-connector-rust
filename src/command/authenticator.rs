@@ -38,7 +38,7 @@ impl Authenticator {
         let mut schema = "".to_string();
         let pathes = url_info.path_segments().map(|c| c.collect::<Vec<_>>());
         if let Some(vec) = pathes {
-            if vec.len() > 0 {
+            if !vec.is_empty() {
                 schema = vec[0].to_string();
             }
         }
@@ -102,9 +102,7 @@ impl Authenticator {
             .to_bytes()?,
 
             AuthPlugin::Unsupported => {
-                return Err(BinlogError::MysqlError {
-                    error: "unsupported auth plugin".to_string(),
-                });
+                return Err(BinlogError::ConnectError("unsupported auth plugin".into()));
             }
         };
 
@@ -125,27 +123,25 @@ impl Authenticator {
         match auth_res[0] {
             MysqlRespCode::OK => return Ok(()),
 
-            MysqlRespCode::ERROR => return CommandUtil::check_error_packet(&auth_res),
+            MysqlRespCode::ERROR => return CommandUtil::check_error_packet(auth_res),
 
             MysqlRespCode::AUTH_PLUGIN_SWITCH => {
                 return self
-                    .handle_auth_plugin_switch(channel, sequence, &auth_res)
+                    .handle_auth_plugin_switch(channel, sequence, auth_res)
                     .await;
             }
 
             _ => match AuthPlugin::from_name(auth_plugin_name) {
                 AuthPlugin::MySqlNativePassword => {
-                    return Err(BinlogError::MysqlError {
-                        error: format!(
-                            "unexpected authentication result for mysql_native_password: {}",
-                            auth_res[0]
-                        ),
-                    });
+                    return Err(BinlogError::ConnectError(format!(
+                        "unexpected auth result for mysql_native_password: {}",
+                        auth_res[0]
+                    )));
                 }
 
                 AuthPlugin::CachingSha2Password => {
                     return self
-                        .handle_sha2_auth_result(channel, sequence, &auth_res)
+                        .handle_sha2_auth_result(channel, sequence, auth_res)
                         .await;
                 }
 
@@ -164,7 +160,7 @@ impl Authenticator {
         sequence: u8,
         auth_res: &Vec<u8>,
     ) -> Result<(), BinlogError> {
-        let switch_packet = AuthPluginSwitchPacket::new(&auth_res)?;
+        let switch_packet = AuthPluginSwitchPacket::new(auth_res)?;
         let auth_plugin_name = &switch_packet.auth_plugin_name;
         self.scramble = switch_packet.scramble;
 
@@ -188,12 +184,10 @@ impl Authenticator {
             .encrypted_password()?,
 
             _ => {
-                return Err(BinlogError::MysqlError {
-                    error: format!(
-                        "unexpected auth plugin for auth plugin switch: {}",
-                        auth_plugin_name
-                    ),
-                });
+                return Err(BinlogError::ConnectError(format!(
+                    "unexpected auth plugin for auth plugin switch: {}",
+                    auth_plugin_name
+                )));
             }
         };
 
@@ -207,7 +201,7 @@ impl Authenticator {
         &self,
         channel: &mut PacketChannel,
         sequence: u8,
-        auth_res: &Vec<u8>,
+        auth_res: &[u8],
     ) -> Result<(), BinlogError> {
         // buf[0] is the length of buf, always 1
         match auth_res[1] {
@@ -215,12 +209,10 @@ impl Authenticator {
 
             0x04 => self.sha2_rsa_authenticate(channel, sequence).await,
 
-            _ => Err(BinlogError::MysqlError {
-                error: format!(
-                    "unexpected authentication result for caching_sha2_password: {}",
-                    auth_res[1]
-                ),
-            }),
+            _ => Err(BinlogError::ConnectError(format!(
+                "unexpected auth result for caching_sha2_password: {}",
+                auth_res[1]
+            ))),
         }
     }
 
@@ -231,11 +223,11 @@ impl Authenticator {
     ) -> Result<(), BinlogError> {
         // refer: https://mariadb.com/kb/en/caching_sha2_password-authentication-plugin/
         // try to get RSA key from server
-        channel.write(&vec![0x02], sequence + 1).await?;
+        channel.write(&[0x02], sequence + 1).await?;
         let (rsa_res, sequence) = channel.read_with_sequece().await?;
         match rsa_res[0] {
             0x01 => {
-                let rsa_key = Rsa::public_key_from_pem(&rsa_res[1..])?;
+                let rsa_key = Rsa::public_key_from_pem(&rsa_res[1..]).unwrap();
 
                 // try sha2 authentication with rsa
                 let mut command = AuthSha2RsaPasswordCommand {
@@ -246,17 +238,13 @@ impl Authenticator {
                 channel.write(&command.to_bytes()?, sequence + 1).await?;
 
                 let (auth_res, _) = channel.read_with_sequece().await?;
-                return CommandUtil::parse_result(&auth_res);
+                CommandUtil::parse_result(&auth_res)
             }
 
-            _ => {
-                return Err(BinlogError::MysqlError {
-                    error: format!(
-                        "failed to get RSA key from server for caching_sha2_password: {}",
-                        rsa_res[0]
-                    ),
-                })
-            }
+            _ => Err(BinlogError::ConnectError(format!(
+                "failed to get RSA key from server for caching_sha2_password: {}",
+                rsa_res[0]
+            ))),
         }
     }
 }

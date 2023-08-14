@@ -22,7 +22,7 @@ impl DumpBinlogCommand {
         buf.write_u16::<LittleEndian>(binlog_flags)?;
 
         buf.write_u32::<LittleEndian>(self.server_id as u32)?;
-        buf.write(&self.binlog_filename.as_bytes())?;
+        buf.write_all(self.binlog_filename.as_bytes())?;
 
         Ok(buf)
     }

@@ -4,67 +4,42 @@ mod test {
     use mysql_binlog_connector_rust::column::column_value::ColumnValue;
     use serial_test::serial;
 
-    use crate::{dml_tests::dml_test_common::test::DmlTestCommon, test_runner::test::TestRunner};
+    use crate::runner::{assert::test::Assert, mock::test::Mock, test_runner::test::TestRunner};
 
     #[test]
     #[serial]
     fn test_update_multiple_rows() {
-        let mut runner = TestRunner::new();
-
-        // insert
         let prepare_sqls = vec![
-            DmlTestCommon::get_create_table_sql_with_all_types(
-                &runner.default_db,
-                &runner.default_tb,
-            ),
+            Mock::default_create_sql(),
             "SET @@session.time_zone='UTC'".to_string(),
         ];
-        let values = DmlTestCommon::generate_basic_dml_test_data();
-        let insert_test_values = vec![
-            "(".to_string() + &values[0].join(",") + ")",
-            "(".to_string() + &values[1].join(",") + ")",
-            "(".to_string() + &values[2].join(",") + ")",
-            "(".to_string() + &values[3].join(",") + ")",
-            "(".to_string() + &values[4].join(",") + ")",
-        ];
-        runner.execute_insert_sqls_and_get_binlogs(&prepare_sqls, &insert_test_values);
+
+        // insert
+        let col_names = Mock::default_col_names();
+        let values = Mock::default_insert_values();
+        let insert_sqls = vec![Mock::insert_sql(&values)];
+
+        let mut runner = TestRunner::new();
+        runner.execute_sqls_and_get_binlogs(&prepare_sqls, &insert_sqls);
 
         // update
-        let update_test_sqls = vec![
-            DmlTestCommon::get_update_table_sql_with_all_types(
-                &runner.default_db,
-                &runner.default_tb,
-                values[0][0].clone(),
-                values[1].clone(),
-            ),
-            DmlTestCommon::get_update_table_sql_with_all_types(
-                &runner.default_db,
-                &runner.default_tb,
-                values[1][0].clone(),
-                values[2].clone(),
-            ),
-            DmlTestCommon::get_update_table_sql_with_all_types(
-                &runner.default_db,
-                &runner.default_tb,
-                values[2][0].clone(),
-                values[3].clone(),
-            ),
-            DmlTestCommon::get_update_table_sql_with_all_types(
-                &runner.default_db,
-                &runner.default_tb,
-                values[3][0].clone(),
-                values[4].clone(),
-            ),
+        let update_sqls = vec![
+            Mock::update_sql("pk", values[0][0], &col_names[1..], &values[1][1..]),
+            Mock::update_sql("pk", values[1][0], &col_names[1..], &values[2][1..]),
+            Mock::update_sql("pk", values[2][0], &col_names[1..], &values[3][1..]),
+            Mock::update_sql("pk", values[3][0], &col_names[1..], &values[4][1..]),
         ];
-        runner.execute_update_sqls_and_get_binlogs(
+        runner.execute_sqls_and_get_binlogs(
             &vec!["SET @@session.time_zone='UTC'".to_string()],
-            &update_test_sqls,
+            &update_sqls,
         );
 
         assert_eq!(runner.update_events.len(), 4);
 
-        DmlTestCommon::check_values(
+        // row 0, before
+        Mock::default_check_values(
             &runner.update_events[0].rows[0].0,
+            0,
             1,
             2,
             3,
@@ -95,9 +70,11 @@ mod test {
             1,
         );
 
-        DmlTestCommon::check_values(
+        // row 0, after
+        Mock::default_check_values(
             &runner.update_events[0].rows[0].1,
-            1,
+            0,
+            10,
             20,
             30,
             40,
@@ -127,8 +104,10 @@ mod test {
             2,
         );
 
-        DmlTestCommon::check_values(
+        // row 1, before
+        Mock::default_check_values(
             &runner.update_events[1].rows[0].0,
+            1,
             10,
             20,
             30,
@@ -159,9 +138,11 @@ mod test {
             2,
         );
 
-        DmlTestCommon::check_values(
+        // row 1, after
+        Mock::default_check_values(
             &runner.update_events[1].rows[0].1,
-            10,
+            1,
+            6,
             7,
             8,
             9,
@@ -191,8 +172,10 @@ mod test {
             4,
         );
 
-        DmlTestCommon::check_values(
+        // row 2, before
+        Mock::default_check_values(
             &runner.update_events[2].rows[0].0,
+            2,
             6,
             7,
             8,
@@ -223,100 +206,60 @@ mod test {
             4,
         );
 
+        // row 2, after
+        Assert::assert_numeric_eq(&runner.update_events[2].rows[0].1.column_values[0], 2);
         // NULL fields
         for i in 0..13 {
             assert_eq!(
-                runner.update_events[2].rows[0].1.column_values[2 * i + 1],
+                runner.update_events[2].rows[0].1.column_values[2 * i + 2],
                 ColumnValue::None
             );
         }
         // non-Null fields
-        for i in 1..13 {
-            assert_ne!(
-                runner.update_events[2].rows[0].1.column_values[2 * i],
-                ColumnValue::None
-            );
-        }
+        let row_2_after = &runner.update_events[2].rows[0].1.column_values;
+        Assert::assert_numeric_eq(&row_2_after[1], 11 as i128);
+        Assert::assert_numeric_eq(&row_2_after[3], 3 as i128);
+        Assert::assert_numeric_eq(&row_2_after[5], 5 as i128);
+        Assert::assert_float_eq(&row_2_after[7], 1234.12);
+        Assert::assert_numeric_eq(&row_2_after[9], 3 as i128);
+        Assert::assert_string_eq(&row_2_after[11], "03:04:05.123456".to_string());
+        Assert::assert_numeric_eq(&row_2_after[13], 2022 as i128);
+        Assert::assert_bytes_eq(&row_2_after[15], vec![97u8, 98]);
+        Assert::assert_bytes_eq(&row_2_after[17], vec![101u8, 102]);
+        Assert::assert_bytes_eq(&row_2_after[19], vec![105u8, 106]);
+        Assert::assert_bytes_eq(&row_2_after[21], vec![109u8, 110]);
+        Assert::assert_bytes_eq(&row_2_after[23], vec![113u8, 114]);
+        Assert::assert_bytes_eq(&row_2_after[25], vec![117u8, 118]);
+        Assert::assert_unsigned_numeric_eq(&row_2_after[27], 1 as u64);
 
-        DmlTestCommon::check_values(
-            &runner.update_events[2].rows[0].1,
-            6,
-            2,
-            3,
-            4,
-            5,
-            "123456.1234".to_string(),
-            1234.12,
-            12345.123,
-            3,
-            "2022-01-02 03:04:05.123456".to_string(),
-            "03:04:05.123456".to_string(),
-            "2022-01-02".to_string(),
-            2022,
-            1641092645123456,
-            vec![97u8, 98],
-            vec![99u8, 100],
-            vec![101u8, 102],
-            vec![103u8, 104],
-            vec![105u8, 106],
-            vec![107u8, 108],
-            vec![109u8, 110],
-            vec![111u8, 112],
-            vec![113u8, 114],
-            vec![115u8, 116],
-            vec![117u8, 118],
-            vec![119u8, 120],
-            1,
-            1,
-        );
-
+        // row 3, before
+        Assert::assert_numeric_eq(&runner.update_events[3].rows[0].0.column_values[0], 3);
         // NULL fields
         for i in 0..13 {
             assert_eq!(
-                runner.update_events[3].rows[0].0.column_values[2 * i + 1],
+                runner.update_events[3].rows[0].0.column_values[2 * i + 2],
                 ColumnValue::None
             );
         }
         // non-Null fields
-        for i in 0..13 {
-            assert_ne!(
-                runner.update_events[3].rows[0].0.column_values[2 * i],
-                ColumnValue::None
-            );
-        }
-        DmlTestCommon::check_values(
-            &runner.update_events[3].rows[0].0,
-            11,
-            2,
-            3,
-            4,
-            5,
-            "123456.1234".to_string(),
-            1234.12,
-            12345.123,
-            3,
-            "2022-01-02 03:04:05.123456".to_string(),
-            "03:04:05.123456".to_string(),
-            "2022-01-02".to_string(),
-            2022,
-            1641092645123456,
-            vec![97u8, 98],
-            vec![99u8, 100],
-            vec![101u8, 102],
-            vec![103u8, 104],
-            vec![105u8, 106],
-            vec![107u8, 108],
-            vec![109u8, 110],
-            vec![111u8, 112],
-            vec![113u8, 114],
-            vec![115u8, 116],
-            vec![117u8, 118],
-            vec![119u8, 120],
-            1,
-            1,
-        );
+        let row_3_before = &runner.update_events[3].rows[0].0.column_values;
+        Assert::assert_numeric_eq(&row_3_before[1], 11 as i128);
+        Assert::assert_numeric_eq(&row_3_before[3], 3 as i128);
+        Assert::assert_numeric_eq(&row_3_before[5], 5 as i128);
+        Assert::assert_float_eq(&row_3_before[7], 1234.12);
+        Assert::assert_numeric_eq(&row_3_before[9], 3 as i128);
+        Assert::assert_string_eq(&row_3_before[11], "03:04:05.123456".to_string());
+        Assert::assert_numeric_eq(&row_3_before[13], 2022 as i128);
+        Assert::assert_bytes_eq(&row_3_before[15], vec![97u8, 98]);
+        Assert::assert_bytes_eq(&row_3_before[17], vec![101u8, 102]);
+        Assert::assert_bytes_eq(&row_3_before[19], vec![105u8, 106]);
+        Assert::assert_bytes_eq(&row_3_before[21], vec![109u8, 110]);
+        Assert::assert_bytes_eq(&row_3_before[23], vec![113u8, 114]);
+        Assert::assert_bytes_eq(&row_3_before[25], vec![117u8, 118]);
+        Assert::assert_unsigned_numeric_eq(&row_3_before[27], 1 as u64);
 
-        for i in 1..27 {
+        // row 3, after
+        for i in 1..28 {
             assert_eq!(
                 runner.update_events[3].rows[0].1.column_values[i],
                 ColumnValue::None

@@ -21,18 +21,18 @@ impl TableMapEvent {
     pub fn parse(cursor: &mut Cursor<&Vec<u8>>) -> Result<Self, BinlogError> {
         // refer: https://dev.mysql.com/doc/dev/mysql-server/latest/classbinary__log_1_1Table__map__event.html
         // table_id
-        let table_id = cursor.read_u48::<LittleEndian>()? as u64;
+        let table_id = cursor.read_u48::<LittleEndian>()?;
 
         // flags, Reserved for future use; currently always 0.
         let _flags = cursor.read_u16::<LittleEndian>();
 
         // database_name
         let database_name_length = cursor.read_u8()?;
-        let database_name = cursor.read_string_without_terminater(database_name_length as usize)?;
+        let database_name = cursor.read_string_without_terminator(database_name_length as usize)?;
 
         // table_name
         let table_name_length = cursor.read_u8()?;
-        let table_name = cursor.read_string_without_terminater(table_name_length as usize)?;
+        let table_name = cursor.read_string_without_terminator(table_name_length as usize)?;
 
         // column_count
         let column_count = cursor.read_packed_number()?;
@@ -68,7 +68,7 @@ impl TableMapEvent {
     ) -> Result<Vec<u16>, BinlogError> {
         let mut column_metadatas = Vec::with_capacity(column_types.len());
         for column_type in column_types {
-            let column_metadata = match ColumnType::from_code(column_type.clone()) {
+            let column_metadata = match ColumnType::from_code(*column_type) {
                 ColumnType::Float
                 | ColumnType::Double
                 | ColumnType::Blob

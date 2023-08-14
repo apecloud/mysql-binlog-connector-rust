@@ -36,4 +36,4 @@ mysql:5.7.40 \
 ```
 
 run tests: 
-- cargo test --package mysql-binlog-connector-rust --lib -- test::
+- cargo test --package mysql-binlog-connector-rust --test integration_test

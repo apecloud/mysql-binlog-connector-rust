@@ -15,7 +15,7 @@ mod test {
         let res = parser.check_magic(&mut file);
         assert!(res.is_err());
         match res.err().unwrap() {
-            BinlogError::ReadBinlogError { error } => {
+            BinlogError::UnexpectedData(error) => {
                 assert_eq!(error, "bad magic")
             }
 

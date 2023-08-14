@@ -141,9 +141,10 @@ impl ColumnValue {
             ColumnType::Json => ColumnValue::Json(Self::parse_blob(cursor, column_meta)?),
 
             _ => {
-                return Err(BinlogError::UnsupportedColumnType {
-                    error: format!("{:?}", column_type),
-                })
+                return Err(BinlogError::UnsupportedColumnType(format!(
+                    "{:?}",
+                    column_type
+                )))
             }
         };
 
@@ -152,7 +153,7 @@ impl ColumnValue {
 
     fn parse_bit(cursor: &mut Cursor<&Vec<u8>>, column_meta: u16) -> Result<u64, BinlogError> {
         let bit_count = (column_meta >> 8) * 8 + (column_meta & 0xFF);
-        let bytes = cursor.read_bits2(bit_count as usize, true)?;
+        let bytes = cursor.read_bits_as_bytes(bit_count as usize, true)?;
         let mut result = 0u64;
         for i in 0..bytes.len() {
             result |= (bytes[i] as u64) << (i * 8);
@@ -200,7 +201,7 @@ impl ColumnValue {
         let length = ((column_meta + 1) / 2) as u32;
         if length > 0 {
             fraction = cursor.read_uint::<BigEndian>(length as usize)?;
-            fraction = fraction * u64::pow(100, 3 - length);
+            fraction *= u64::pow(100, 3 - length);
         }
         Ok(fraction as u32)
     }

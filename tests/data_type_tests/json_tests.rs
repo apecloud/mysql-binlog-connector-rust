@@ -2,14 +2,13 @@
 #[cfg(test)]
 mod test {
 
-    use async_std::task::block_on;
     use mysql_binlog_connector_rust::{
         binlog_error::BinlogError,
         column::{column_value::ColumnValue, json::json_binary::JsonBinary},
     };
     use serial_test::serial;
 
-    use crate::{assert::test::Assert, test_runner::test::TestRunner};
+    use crate::runner::{assert::test::Assert, mock::test::Mock, test_runner::test::TestRunner};
 
     #[test]
     #[serial]
@@ -71,7 +70,7 @@ mod test {
             ),
         ];
 
-        block_on(runner.execute_sqls_and_get_binlogs(&prepare_sqls, &test_sqls));
+        runner.execute_sqls_and_get_binlogs(&prepare_sqls, &test_sqls);
 
         Assert::assert_json_string_eq(
             &json_value,
@@ -96,7 +95,7 @@ mod test {
             format!("update {} set j = JSON_REMOVE(j, '$.addr.detail.ab')", tb),
         ];
 
-        block_on(runner.execute_sqls_and_get_binlogs(&prepare_sqls, &test_sqls));
+        runner.execute_sqls_and_get_binlogs(&prepare_sqls, &test_sqls);
 
         Assert::assert_json_string_eq(
             &json_value,
@@ -124,7 +123,7 @@ mod test {
             ),
         ];
 
-        block_on(runner.execute_sqls_and_get_binlogs(&prepare_sqls, &test_sqls));
+        runner.execute_sqls_and_get_binlogs(&prepare_sqls, &test_sqls);
 
         Assert::assert_json_string_eq(
             &json_value,
@@ -152,7 +151,7 @@ mod test {
             ),
         ];
 
-        block_on(runner.execute_sqls_and_get_binlogs(&prepare_sqls, &test_sqls));
+        runner.execute_sqls_and_get_binlogs(&prepare_sqls, &test_sqls);
 
         Assert::assert_json_string_eq(
             &json_value,
@@ -177,7 +176,7 @@ mod test {
             format!("update {} set j = JSON_REMOVE(j, '$[1]')", tb),
         ];
 
-        block_on(runner.execute_sqls_and_get_binlogs(&prepare_sqls, &test_sqls));
+        runner.execute_sqls_and_get_binlogs(&prepare_sqls, &test_sqls);
 
         Assert::assert_json_string_eq(
             &json_value,
@@ -199,17 +198,18 @@ mod test {
             "create table {} (h varchar(255), j JSON, k varchar(255))",
             tb
         )];
-        let values = vec!["('sponge', '{}', 'bob')".to_string()];
+        let values = vec!["'sponge'", "'{}'", "'bob'"];
+        let insert_sql = Mock::insert_sql(&vec![values]);
 
-        runner.execute_insert_sqls_and_get_binlogs(&prepare_sqls, &values);
+        runner.execute_sqls_and_get_binlogs(&prepare_sqls, &vec![insert_sql]);
 
-        Assert::assert_string_eq(
+        Assert::assert_bytes_eq(
             &runner.insert_events[0].rows[0].column_values[0],
-            "sponge".to_string(),
+            "sponge".as_bytes().to_vec(),
         );
-        Assert::assert_string_eq(
+        Assert::assert_bytes_eq(
             &runner.insert_events[0].rows[0].column_values[2],
-            "bob".to_string(),
+            "bob".as_bytes().to_vec(),
         );
         Assert::assert_json_string_eq(
             "{}",
@@ -561,14 +561,10 @@ mod test {
             "CAST(CAST(\"212765.700000000010000\" AS DECIMAL(21,15)) AS JSON)",
             "CAST(CAST(\"111111.11111110000001\" AS DECIMAL(24,17)) AS JSON)",
         ];
-        let runner = run_json_test(&origin_values, &vec![], false);
-        Assert::assert_string_eq(
-            &runner.insert_events[0].rows[0].column_values[0],
-            "212765.700000000010000".to_string(),
-        );
-        Assert::assert_string_eq(
-            &runner.insert_events[1].rows[0].column_values[0],
-            "111111.11111110000001".to_string(),
+        run_json_test(
+            &origin_values,
+            &vec!["212765.700000000010000", "111111.11111110000001"],
+            false,
         );
     }
 
@@ -577,9 +573,6 @@ mod test {
         expected_values: &Vec<&str>,
         quote: bool,
     ) -> TestRunner {
-        let mut runner = TestRunner::new();
-        let prepare_sqls = vec![runner.get_create_table_sql_with_one_field("JSON".to_string())];
-
         let values = origin_values
             .clone()
             .into_iter()
@@ -591,13 +584,19 @@ mod test {
                 }
             })
             .collect::<Vec<String>>();
-        runner.execute_insert_sqls_and_get_binlogs(&prepare_sqls, &values);
+
+        let mut str_values = vec![];
+        for i in values.iter() {
+            str_values.push(i.as_str());
+        }
+
+        let runner = TestRunner::run_one_col_test("JSON", &str_values, &vec![]);
 
         if expected_values.len() == origin_values.len() {
             let mut binlog_values = Vec::new();
             for i in 0..origin_values.len() {
                 if let Ok(json_string) =
-                    parse_json_as_string(&runner.insert_events[i].rows[0].column_values[0])
+                    parse_json_as_string(&runner.insert_events[0].rows[i].column_values[0])
                 {
                     binlog_values.push(json_string);
                 } else {
@@ -616,9 +615,9 @@ mod test {
     fn parse_json_as_string(column_value: &ColumnValue) -> Result<String, BinlogError> {
         match column_value {
             ColumnValue::Json(bytes) => JsonBinary::parse_as_string(bytes),
-            _ => Err(BinlogError::ParseJsonError {
-                error: "column value is not json".to_string(),
-            }),
+            _ => Err(BinlogError::ParseJsonError(
+                "column value is not json".into(),
+            )),
         }
     }
 }

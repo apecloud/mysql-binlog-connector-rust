@@ -14,7 +14,7 @@ impl QueryCommand {
     pub fn to_bytes(&mut self) -> Result<Vec<u8>, BinlogError> {
         let mut buf = Vec::new();
         buf.write_u8(CommandType::Query as u8)?;
-        buf.write(&self.sql.as_bytes())?;
+        buf.write_all(self.sql.as_bytes())?;
         Ok(buf)
     }
 }
