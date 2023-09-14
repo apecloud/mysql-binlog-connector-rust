@@ -36,4 +36,54 @@ mysql:5.7.40 \
 ```
 
 run tests: 
-- cargo test --package mysql-binlog-connector-rust --test integration_test
+- you may need to modify tests/.env to suit your test environment
+```
+cargo test --package mysql-binlog-connector-rust --test integration_test
+```
+
+## Example
+```rust
+fn main() {
+    let env_path = env::current_dir().unwrap().join("example/src/.env");
+    dotenv::from_path(env_path).unwrap();
+    let db_url = env::var("db_url").unwrap();
+    let server_id: u64 = env::var("server_id").unwrap().parse().unwrap();
+    let binlog_filename = env::var("binlog_filename").unwrap();
+    let binlog_position: u32 = env::var("binlog_position").unwrap().parse().unwrap();
+
+    block_on(start_client(
+        db_url,
+        server_id,
+        binlog_filename,
+        binlog_position,
+    ));
+}
+
+async fn start_client(url: String, server_id: u64, binlog_filename: String, binlog_position: u32) {
+    let mut client = BinlogClient {
+        url,
+        binlog_filename,
+        binlog_position,
+        server_id,
+    };
+
+    let mut stream = client.connect().await.unwrap();
+
+    loop {
+        let (_header, data) = stream.read().await.unwrap();
+        println!("recevied data: {:?}", data);
+    }
+}
+```
+
+## Parse json field 
+```rust
+fn parse_json_as_string(column_value: &ColumnValue) -> Result<String, BinlogError> {
+    match column_value {
+        ColumnValue::Json(bytes) => JsonBinary::parse_as_string(bytes),
+        _ => Err(BinlogError::ParseJsonError(
+            "column value is not json".into(),
+        )),
+    }
+}
+```
