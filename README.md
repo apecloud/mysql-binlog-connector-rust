@@ -1,6 +1,7 @@
 # mysql-binlog-connector-rust
 
 ## Overview
+A simple but strong lib to parse mysql binlog in RUST.
 
 ## Quick start
 ### Run tests

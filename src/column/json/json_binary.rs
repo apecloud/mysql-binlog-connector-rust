@@ -1,6 +1,7 @@
 use crate::{
     binlog_error::BinlogError,
     column::{column_type::ColumnType, column_value::ColumnValue},
+    ext::buf_ext::BufExt,
 };
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::{Cursor, Read, Seek, SeekFrom};
@@ -255,7 +256,7 @@ impl JsonBinary<'_> {
         let length = self.read_var_int()?;
         let mut bytes = vec![0; length as usize];
         self.reader.read_exact(&mut bytes)?;
-        let value = String::from_utf8(bytes)?;
+        let value = bytes.to_utf8_string();
         formatter.value_string(&value);
         Ok(())
     }
@@ -407,7 +408,7 @@ impl JsonBinary<'_> {
     fn read_as_string(&mut self, length: usize) -> Result<String, BinlogError> {
         let mut bytes = vec![0; length];
         self.reader.read_exact(&mut bytes)?;
-        Ok(String::from_utf8(bytes)?)
+        Ok(bytes.to_utf8_string())
     }
 
     fn read_var_int(&mut self) -> Result<i32, BinlogError> {
