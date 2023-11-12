@@ -4,6 +4,8 @@ use byteorder::{LittleEndian, ReadBytesExt};
 
 use crate::{binlog_error::BinlogError, constants};
 
+use super::buf_ext::BufExt;
+
 pub trait CursorExt {
     fn read_string(&mut self, size: usize) -> Result<String, BinlogError>;
 
@@ -28,7 +30,7 @@ impl CursorExt for Cursor<&Vec<u8>> {
     fn read_string(&mut self, size: usize) -> Result<String, BinlogError> {
         let mut buf = vec![0; size];
         self.read_exact(&mut buf)?;
-        Ok(String::from_utf8(buf)?)
+        Ok(buf.to_utf8_string())
     }
 
     /// Read a utf8 string from cursor and skip the end signal
@@ -43,7 +45,7 @@ impl CursorExt for Cursor<&Vec<u8>> {
         let mut buf = Vec::new();
         self.read_until(constants::NULL_TERMINATOR, &mut buf)?;
         buf.pop();
-        Ok(String::from_utf8(buf)?)
+        Ok(buf.to_utf8_string())
     }
 
     /// Format (first-byte-based):

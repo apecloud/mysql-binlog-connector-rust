@@ -10,6 +10,8 @@ pub trait BufExt {
     fn reverse(&mut self);
 
     fn xor(&mut self, buf2: Vec<u8>) -> Vec<u8>;
+
+    fn to_utf8_string(self) -> String;
 }
 
 impl BufExt for Vec<u8> {
@@ -34,5 +36,12 @@ impl BufExt for Vec<u8> {
             res.push(self[i] ^ buf2[i % buf2.len()]);
         }
         res
+    }
+
+    fn to_utf8_string(self) -> String {
+        if let Ok(str) = String::from_utf8(self.clone()) {
+            return str;
+        }
+        String::from_utf8_lossy(&self).to_string()
     }
 }

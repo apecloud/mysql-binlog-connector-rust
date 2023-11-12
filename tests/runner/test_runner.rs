@@ -135,8 +135,8 @@ pub(crate) mod test {
                     }
                     // mysql8.0 with binlog transaction compression
                     EventData::TransactionPayload(event) => {
-                        for uncompressed_event in event.uncompressed_events {
-                            match uncompressed_event.1 {
+                        for (_header, data) in event.uncompressed_events {
+                            match data {
                                 EventData::WriteRows(event) => {
                                     self.insert_events.push(event);
                                 }
