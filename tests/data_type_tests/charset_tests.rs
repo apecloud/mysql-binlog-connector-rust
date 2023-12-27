@@ -2,9 +2,10 @@
 mod test {
     use std::vec;
 
+    use mysql_binlog_connector_rust::column::column_value::ColumnValue;
     use serial_test::serial;
 
-    use crate::runner::{assert::test::Assert, test_runner::test::TestRunner};
+    use crate::runner::test_runner::test::TestRunner;
 
     #[test]
     #[serial]
@@ -19,7 +20,7 @@ mod test {
             49, 50, 51, 97, 98, 99, 228, 184, 173, 230, 150, 135, 240, 159, 152, 128,
         ]];
 
-        run_bytes_tests(col_type, "SET names utf8mb4", &values, &check_values);
+        run_and_check(col_type, "SET names utf8mb4", &values, &check_values);
     }
 
     #[test]
@@ -32,7 +33,7 @@ mod test {
         // "中文": [228, 184, 173, 230, 150, 135]
         let check_values = vec![vec![49, 50, 51, 97, 98, 99, 228, 184, 173, 230, 150, 135]];
 
-        run_bytes_tests(col_type, "SET names utf8", &values, &check_values);
+        run_and_check(col_type, "SET names utf8", &values, &check_values);
     }
 
     #[test]
@@ -44,7 +45,7 @@ mod test {
         // "abc": [97, 98, 99])
         let check_values = vec![vec![49, 50, 51, 97, 98, 99]];
 
-        run_bytes_tests(col_type, "SET names utf8", &values, &check_values);
+        run_and_check(col_type, "SET names utf8", &values, &check_values);
     }
 
     #[test]
@@ -57,7 +58,7 @@ mod test {
         // "中文": [214, 208, 206, 196]
         let check_values = vec![vec![49, 50, 51, 97, 98, 99, 214, 208, 206, 196]];
 
-        run_bytes_tests(col_type, "SET names utf8", &values, &check_values);
+        run_and_check(col_type, "SET names utf8", &values, &check_values);
     }
 
     #[test]
@@ -73,10 +74,10 @@ mod test {
             49, 50, 51, 97, 98, 99, 214, 208, 206, 196, 148, 57, 252, 54,
         ]];
 
-        run_bytes_tests(col_type, "SET names utf8mb4", &values, &check_values);
+        run_and_check(col_type, "SET names utf8mb4", &values, &check_values);
     }
 
-    fn run_bytes_tests(
+    fn run_and_check(
         col_type: &str,
         init_sql: &str,
         values: &Vec<&str>,
@@ -84,9 +85,9 @@ mod test {
     ) {
         let runner = TestRunner::run_one_col_test(col_type, values, &vec![init_sql]);
         for i in 0..check_values.len() {
-            Assert::assert_bytes_eq(
-                &runner.insert_events[0].rows[i].column_values[0],
-                check_values[i].clone(),
+            assert_eq!(
+                runner.insert_events[0].rows[i].column_values[0],
+                ColumnValue::String(check_values[i].clone())
             );
         }
     }

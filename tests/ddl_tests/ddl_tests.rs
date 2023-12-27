@@ -36,7 +36,7 @@ mod test {
 
     #[test]
     #[serial]
-    fn test_ddl_with_quotes() {
+    fn test_ddl_with_escapes() {
         let prepare_sqls = vec!["DROP DATABASE IF EXISTS `db_test_ddl`"];
         let test_sqls = vec![
             "CREATE DATABASE `db_test_ddl`",

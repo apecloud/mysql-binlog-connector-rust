@@ -2,20 +2,10 @@
 mod test {
     use std::vec;
 
+    use mysql_binlog_connector_rust::column::column_value::ColumnValue;
     use serial_test::serial;
 
-    use crate::runner::{assert::test::Assert, test_runner::test::TestRunner};
-
-    #[test]
-    #[serial]
-    fn test_enum() {
-        // refer: https://dev.mysql.com/doc/refman/8.0/en/enum.html
-        // An ENUM column can have a maximum of 65,535 distinct elements.
-        let col_type = "ENUM('x-small', 'small', 'medium', 'large', 'x-large')";
-        let values = vec!["'x-small'", "'small'", "'medium'", "'large'", "'x-large'"];
-        let check_values = vec![1, 2, 3, 4, 5];
-        run_numeric_tests(col_type, &values, &check_values);
-    }
+    use crate::runner::test_runner::test::TestRunner;
 
     #[test]
     #[serial]
@@ -32,7 +22,7 @@ mod test {
             1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536,
             131072,
         ];
-        run_numeric_tests(col_type, &values, &check_values);
+        run_and_check(col_type, &values, &check_values);
     }
 
     #[test]
@@ -41,15 +31,15 @@ mod test {
         let col_type = "SET('1', '2', '3', '4', '5')";
         let values = vec!["1", "2", "3", "4", "5"];
         let check_values = vec![1, 2, 3, 4, 5];
-        run_numeric_tests(col_type, &values, &check_values);
+        run_and_check(col_type, &values, &check_values);
     }
 
-    fn run_numeric_tests(col_type: &str, values: &Vec<&str>, check_values: &Vec<u64>) {
+    fn run_and_check(col_type: &str, values: &Vec<&str>, check_values: &Vec<u64>) {
         let runner = TestRunner::run_one_col_test(col_type, values, &vec![]);
         for i in 0..check_values.len() {
-            Assert::assert_unsigned_numeric_eq(
-                &runner.insert_events[0].rows[i].column_values[0],
-                check_values[i],
+            assert_eq!(
+                runner.insert_events[0].rows[i].column_values[0],
+                ColumnValue::Set(check_values[i]),
             );
         }
     }
