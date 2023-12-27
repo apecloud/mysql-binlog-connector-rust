@@ -4,7 +4,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::binlog_error::BinlogError;
 
-/// Refer to: https://dev.mysql.com/doc/dev/mysql-server/latest/classbinary__log_1_1Table__map__event.html#Table_table_map_event_column_types
+/// Refer to: https://dev.mysql.com/doc/dev/mysql-server/8.0.33/classbinary__log_1_1Table__map__event.html
+/// Refer to: https://github.com/mysql/mysql-server/blob/trunk/include/mysql.h.pp
 #[derive(Debug, Deserialize, Serialize, Clone, IntoPrimitive, TryFromPrimitive)]
 #[repr(i16)]
 pub enum ColumnType {
@@ -24,6 +25,7 @@ pub enum ColumnType {
     Time = 11,
     DateTime = 12,
     Year = 13,
+    // This enumeration value is only used internally and cannot exist in a binlog.
     NewDate = 14,
     VarChar = 15,
     Bit = 16,
@@ -32,10 +34,15 @@ pub enum ColumnType {
     Time2 = 19,
     Json = 245,
     NewDecimal = 246,
+    // This enumeration value is only used internally and cannot exist in a binlog.
     Enum = 247,
+    // This enumeration value is only used internally and cannot exist in a binlog.
     Set = 248,
+    // This enumeration value is only used internally and cannot exist in a binlog.
     TinyBlob = 249,
+    // This enumeration value is only used internally and cannot exist in a binlog.
     MediumBlob = 250,
+    // This enumeration value is only used internally and cannot exist in a binlog.
     LongBlob = 251,
     Blob = 252,
     VarString = 253,

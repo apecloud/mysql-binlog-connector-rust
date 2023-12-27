@@ -3,6 +3,7 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 #[derive(IntoPrimitive, TryFromPrimitive)]
 #[repr(u8)]
 pub enum EventType {
+    // refer: https://github.com/mysql/mysql-server/blob/trunk/libs/mysql/binlog/event/binlog_event.h
     #[num_enum(default)]
     Unkown = 0,
     StartV3 = 1,
@@ -39,7 +40,7 @@ pub enum EventType {
     ExtDeleteRows = 32,
     Gtid = 33,
     AnonymousGtid = 34,
-    PreviousGtid = 35,
+    PreviousGtids = 35,
     TransactionContext = 36,
     ViewChage = 37,
     XaPrepare = 38,

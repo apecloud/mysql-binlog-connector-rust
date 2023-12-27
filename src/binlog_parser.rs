@@ -54,7 +54,7 @@ impl BinlogParser {
                 Ok((header, EventData::FormatDescription(event_data)))
             }
 
-            EventType::PreviousGtid => Ok((
+            EventType::PreviousGtids => Ok((
                 header,
                 EventData::PreviousGtids(PreviousGtidsEvent::parse(&mut cursor)?),
             )),
