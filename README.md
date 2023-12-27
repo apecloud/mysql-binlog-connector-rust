@@ -1,7 +1,7 @@
 # mysql-binlog-connector-rust
 
 ## Overview
-- A simple but strong lib to parse mysql Row Based Replication Events in RUST.
+- A simple but strong lib to parse mysql Row Based Replication Events in RUST with async IO.
 
 ### Supported mysql versions
 - mysql 5.6 (tested in mysql:5.6.51)
@@ -55,7 +55,8 @@
 | GEOMETRY | MYSQL_TYPE_GEOMETRY = 255 | ColumnType::Geometry | ColumnValue::Blob(Vec&lt;u8&gt;) |
 | JSON | MYSQL_TYPE_JSON = 245 | ColumnType::Json | ColumnValue::Json(Vec&lt;u8&gt;) |
 
-- for CHAR / VARCHAR columns, since binlog contains no charset information, we just get raw bytes and store them in ColumnValue::String(Vec&lt;u8&gt;) objects, for further usage, you may need to convert them into strings based on column metadatas.
+- for CHAR / VARCHAR columns, since binlog contains no charset information, we just get raw bytes and store them in ColumnValue::String(Vec&lt;u8&gt;) objects, you may need to convert them into strings based on column metadatas for further usage.
+- for UNSIGNED numeric columns, since binlog contains no unsigned flags, we just parse them as signed numerics, you may need to convert them into unsigned values based on column metadatas for further usage.
 - for JSON columns, we get raw bytes and store them in ColumnValue::Json(Vec&lt;u8&gt;) objects, we also provide a default deserializer "JsonBinary" to parse them into strings, find example later in this doc.
 
 ## Quick start
