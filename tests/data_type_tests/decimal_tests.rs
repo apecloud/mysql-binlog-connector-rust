@@ -1,9 +1,10 @@
 #[cfg(test)]
 mod test {
 
+    use mysql_binlog_connector_rust::column::column_value::ColumnValue;
     use serial_test::serial;
 
-    use crate::runner::{assert::test::Assert, mock::test::Mock, test_runner::test::TestRunner};
+    use crate::runner::{mock::test::Mock, test_runner::test::TestRunner};
 
     // refer to: https://dev.mysql.com/doc/refman/8.0/en/data-types.html
     // refer to: https://dev.mysql.com/doc/refman/8.0/en/fixed-point-types.html
@@ -87,9 +88,9 @@ mod test {
 
         runner.execute_sqls_and_get_binlogs(&prepare_sqls, &insert_sqls);
         for i in 0..check_values.len() {
-            Assert::assert_string_eq(
-                &runner.insert_events[i].rows[0].column_values[0],
-                check_values[i].clone(),
+            assert_eq!(
+                runner.insert_events[i].rows[0].column_values[0],
+                ColumnValue::Decimal(check_values[i].clone())
             );
         }
     }

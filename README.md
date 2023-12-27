@@ -45,18 +45,18 @@
 | TIMESTAMP | MYSQL_TYPE_TIMESTAMP2 = 17 | ColumnType::TimeStamp2 | ColumnValue::Timestamp(i64) |
 | DATETIME | MYSQL_TYPE_DATETIME2 = 18 | ColumnType::DateTime2 | ColumnValue::DateTime(String) |
 | YEAR | MYSQL_TYPE_YEAR = 13 | ColumnType::Year | ColumnValue::Year(u16) |
-| CHAR | MYSQL_TYPE_STRING = 254 | ColumnType::String | ColumnValue::String(Vec<u8>) |
-| VARCHAR | MYSQL_TYPE_VARCHAR = 15 | ColumnType::VarChar | ColumnValue::String(Vec<u8>) |
-| BINARY | MYSQL_TYPE_STRING = 254 | ColumnType::String | ColumnValue::String(Vec<u8>) |
-| VARBINARY | MYSQL_TYPE_VARCHAR = 15 | ColumnType::VarChar | ColumnValue::String(Vec<u8>) |
+| CHAR | MYSQL_TYPE_STRING = 254 | ColumnType::String | ColumnValue::String(Vec&lt;u8&gt;) |
+| VARCHAR | MYSQL_TYPE_VARCHAR = 15 | ColumnType::VarChar | ColumnValue::String(Vec&lt;u8&gt;) |
+| BINARY | MYSQL_TYPE_STRING = 254 | ColumnType::String | ColumnValue::String(Vec&lt;u8&gt;) |
+| VARBINARY | MYSQL_TYPE_VARCHAR = 15 | ColumnType::VarChar | ColumnValue::String(Vec&lt;u8&gt;) |
 | ENUM | MYSQL_TYPE_STRING = 254 | ColumnType::Enum | ColumnValue::Enum(u32) |
 | SET | MYSQL_TYPE_STRING = 254 | ColumnType::Set | ColumnValue::Set(u64) |
-| TINYTEXT TEXT MEDIUMTEXT LONGTEXT TINYBLOB BLOB MEDIUMBLOB LONGBLOB | MYSQL_TYPE_BLOB = 252 | ColumnType::Blob | ColumnValue::Blob(Vec<u8>) |
-| GEOMETRY | MYSQL_TYPE_GEOMETRY = 255 | ColumnType::Geometry | ColumnValue::Blob(Vec<u8>) |
-| JSON | MYSQL_TYPE_JSON = 245 | ColumnType::Json | ColumnValue::Json(Vec<u8>) |
+| TINYTEXT TEXT MEDIUMTEXT LONGTEXT TINYBLOB BLOB MEDIUMBLOB LONGBLOB | MYSQL_TYPE_BLOB = 252 | ColumnType::Blob | ColumnValue::Blob(Vec&lt;u8&gt;) |
+| GEOMETRY | MYSQL_TYPE_GEOMETRY = 255 | ColumnType::Geometry | ColumnValue::Blob(Vec&lt;u8&gt;) |
+| JSON | MYSQL_TYPE_JSON = 245 | ColumnType::Json | ColumnValue::Json(Vec&lt;u8&gt;) |
 
-- for CHAR / VARCHAR columns, since binlog contains no charset information, we just get raw bytes and store them in ColumnValue::String(Vec<u8>) objects, for further usage, you may need to convert them into strings based on column metadatas.
-- for JSON columns, we get raw bytes and store them in ColumnValue::Json(Vec<u8>) objects, we also provide a default deserializer "JsonBinary" to parse them into strings, find example later in this article.
+- for CHAR / VARCHAR columns, since binlog contains no charset information, we just get raw bytes and store them in ColumnValue::String(Vec&lt;u8&gt;) objects, for further usage, you may need to convert them into strings based on column metadatas.
+- for JSON columns, we get raw bytes and store them in ColumnValue::Json(Vec&lt;u8&gt;) objects, we also provide a default deserializer "JsonBinary" to parse them into strings, find example later in this doc.
 
 ## Quick start
 ### Run tests
