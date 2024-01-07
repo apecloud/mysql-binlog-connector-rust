@@ -1,7 +1,11 @@
 use std::env;
 
 use futures::executor::block_on;
-use mysql_binlog_connector_rust::binlog_client::BinlogClient;
+use mysql_binlog_connector_rust::{
+    binlog_client::BinlogClient,
+    column::{column_value::ColumnValue, json::json_binary::JsonBinary},
+    event::{event_data::EventData, row_event::RowEvent},
+};
 
 fn main() {
     let env_path = env::current_dir().unwrap().join("example/src/.env");
@@ -30,7 +34,42 @@ async fn start_client(url: String, server_id: u64, binlog_filename: String, binl
     let mut stream = client.connect().await.unwrap();
 
     loop {
-        let (_header, data) = stream.read().await.unwrap();
-        println!("recevied data: {:?}", data);
+        let (header, data) = stream.read().await.unwrap();
+        println!("header: {:?}", header);
+        println!("data: {:?}", data);
+        println!("");
+    }
+}
+
+fn parse_json_columns(data: EventData) {
+    let parse_row = |row: RowEvent| {
+        for column_value in row.column_values {
+            if let ColumnValue::Json(bytes) = column_value {
+                println!(
+                    "json column: {}",
+                    JsonBinary::parse_as_string(&bytes).unwrap()
+                )
+            }
+        }
+    };
+
+    match data {
+        EventData::WriteRows(event) => {
+            for row in event.rows {
+                parse_row(row)
+            }
+        }
+        EventData::DeleteRows(event) => {
+            for row in event.rows {
+                parse_row(row)
+            }
+        }
+        EventData::UpdateRows(event) => {
+            for (before, after) in event.rows {
+                parse_row(before);
+                parse_row(after);
+            }
+        }
+        _ => {}
     }
 }
