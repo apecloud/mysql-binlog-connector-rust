@@ -8,6 +8,15 @@ members = [
 edition = "2021"
 name = "mysql-binlog-connector-rust"
 version = "0.1.0"
+authors = ["Shicai Xu <chenglingsu@126.com>"]
+categories = ["database"]
+description = "mysql binlog connector"
+documentation = "https://docs.rs/mysql-binlog-connector-rust"
+keywords = ["mysql", "binlog", "connector"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/apecloud/mysql-binlog-connector-rust"
+homepage = "https://github.com/apecloud/mysql-binlog-connector-rust"
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
