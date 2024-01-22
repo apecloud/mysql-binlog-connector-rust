@@ -1,7 +1,7 @@
 # mysql-binlog-connector-rust
 
 ## Overview
-- A simple but strong lib to parse mysql Row Based Replication Events in RUST with async IO.
+- A simple but strong lib to dump mysql binlog and parse Row Based Replication Events in RUST with async IO.
 
 ### Supported mysql versions
 - mysql 5.6 (tested in mysql:5.6.51)
@@ -26,7 +26,7 @@
 - DELETE_ROWS_EVENT_V1
 - DELETE_ROWS_EVENT
 
-- for more details, refer to: https://dev.mysql.com/doc/dev/mysql-server/latest/page_protocol_replication_binlog_event.html
+- for more details, refer to: [mysql doc](https://dev.mysql.com/doc/dev/mysql-server/latest/page_protocol_replication_binlog_event.html)
 
 ### Mapping between mysql columns and rust types
 | mysql column type | binlog column type(raw) | binlog column type(parsed from binlog column meta) | rust type       |
@@ -122,8 +122,8 @@ cargo test --package mysql-binlog-connector-rust --test integration_test
 ```
 - each test will:
 - &nbsp; execute sqls to create tables and generate binlogs
-- &nbsp; dump binlogs and parse
-- &nbsp; wait binlog_parse_millis for all binlogs parsed
+- &nbsp; dump and parse binlogs
+- &nbsp; wait binlog_parse_millis for all binlogs to be parsed
 - you may increase binlog_parse_millis for big transactions
 
 ## Examples
@@ -412,4 +412,24 @@ commit;
 json column: {"k.0":0,"k.1":1,"k.-1":-1,"k.[]":[],"k.{}":{},"k.3.14":3.14,"k.null":null,"k.true":true,"k.32767":32767,"k.32768":32768,"k.false":false,"k.-32768":-32768,"k.-32769":-32769,"k.string":"string","k.2147483647":2147483647,"k.2147483648":2147483648,"k.true_false":[true,false],"k.-2147483648":-2147483648,"k.-2147483649":-2147483649,"k.18446744073709551615":18446744073709551615,"k.18446744073709551616":18446744073709552000}
 
 json column: {"中文":"😀"}
+```
+
+### Example 4: parse binlog file
+```rust
+async fn parse_file() {
+    let file_path = "path-to-binlog-file";
+    let mut file = File::open(file_path).unwrap();
+
+    let mut parser = BinlogParser {
+        checksum_length: 4,
+        table_map_event_by_table_id: HashMap::new(),
+    };
+
+    assert!(parser.check_magic(&mut file).is_ok());
+    while let Ok((header, data)) = parser.next(&mut file) {
+        println!("header: {:?}", header);
+        println!("data: {:?}", data);
+        println!("");
+    }
+}
 ```
