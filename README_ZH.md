@@ -1,16 +1,16 @@
-English | [中文](README_ZH.md)
+[English](README.md) | 中文
 
 # mysql-binlog-connector-rust
 
-## Overview
-- A simple but strong lib to dump mysql binlog (binlog_format=ROW) and parse Row Based Replication Events in RUST with async IO.
+## 概览
+- 使用异步 IO 拉取并解析 mysql binlog（binlog_format=ROW）
 
-### Supported mysql versions
+### 支持的 mysql 版本
 - mysql 5.6 (tested in mysql:5.6.51)
 - mysql 5.7 (tested in mysql:5.7.40)
 - mysql 8.0 (tested in mysql:8.0.31)
 
-### Supported event types
+### 支持的事件类型
 - FORMAT_DESCRIPTION_EVENT
 - ROTATE_EVENT
 - PREVIOUS_GTIDS_LOG_EVENT
@@ -28,9 +28,9 @@ English | [中文](README_ZH.md)
 - DELETE_ROWS_EVENT_V1
 - DELETE_ROWS_EVENT
 
-- for more details, refer to: [mysql doc](https://dev.mysql.com/doc/dev/mysql-server/latest/page_protocol_replication_binlog_event.html)
+- 更多细节, 参考: [mysql doc](https://dev.mysql.com/doc/dev/mysql-server/latest/page_protocol_replication_binlog_event.html)
 
-### Mapping between mysql columns and rust types
+### mysql 数据类型和 rust 数据类型映射
 | mysql column type | binlog column type(raw) | binlog column type(parsed from binlog column meta) | rust type       |
 | :---------------- | :---------------------- | :------------------------------------------------- | :---------      |
 | BIT | MYSQL_TYPE_BIT = 16 | ColumnType::Bit | ColumnValue::Bit(u64) |
@@ -57,14 +57,14 @@ English | [中文](README_ZH.md)
 | GEOMETRY | MYSQL_TYPE_GEOMETRY = 255 | ColumnType::Geometry | ColumnValue::Blob(Vec&lt;u8&gt;) |
 | JSON | MYSQL_TYPE_JSON = 245 | ColumnType::Json | ColumnValue::Json(Vec&lt;u8&gt;) |
 
-- for CHAR / VARCHAR columns, since binlog contains no charset information, we just get raw bytes and store them in ColumnValue::String(Vec&lt;u8&gt;) objects, you may need to convert them into strings based on column metadatas for further usage.
-- for UNSIGNED numeric columns, since binlog contains no unsigned flags, we just parse them as signed numerics, you may need to convert them into unsigned values based on column metadatas for further usage.
-- for JSON columns, we get raw bytes and store them in ColumnValue::Json(Vec&lt;u8&gt;) objects, we also provide a default deserializer "JsonBinary" to parse them into strings, find example later in this doc.
+- 对于 CHAR / VARCHAR 列，由于 binlog 不包含字符集信息，我们只获取二进制数据并存储在 ColumnValue::String(Vec&lt;u8&gt;) 对象中，用户需根据列的元数据进行转换。
+- 对于 UNSIGNED 数字列，由于 binlog 不包含符号标志，我们只将其解析为有符号数字，用户需根据列的元数据进行转换。
+- 对于 JSON 列，我们只获取二进制数据并将其存储在 ColumnValue::Json(Vec&lt;u8&gt;) 对象中，同时我们还提供一个的默认解析器 JsonBinary 将其解析为字符串，本文后续有相应示例。
 
-## Quick start
-### Run tests
-- start a mysql, enable binlog without binlog-transaction-compression
-:
+
+## 快速开始
+### 运行测试用例
+- docker 启动 mysql 5.7，开启 binlog，关闭 binlog-transaction-compression
 ```
 docker run -d --name mysql57 \
 --platform linux/x86_64 \
@@ -85,7 +85,7 @@ mysql:5.7.40 \
 --binlog_format=ROW 
 ```
 
-- start a mysql, enable binlog with binlog-transaction-compression
+- docker 启动 mysql 8.0，开启 binlog，打开 binlog-transaction-compression
 ```
 docker run -d --name mysql80 \
 --platform linux/x86_64 \
@@ -109,7 +109,7 @@ docker run -d --name mysql80 \
  --default_time_zone="+08:00"
 ```
 
-- update configs in tests/.env
+- 更新 tests/.env 中的配置
 ```
 db_url=mysql://root:123456@127.0.0.1:3307
 server_id=200
@@ -118,17 +118,17 @@ default_tb="tb_test"
 binlog_parse_millis=100
 ```
 
-- run tests
+- 运行测试
 ```
 cargo test --package mysql-binlog-connector-rust --test integration_test
 ```
-- each test will:
-- &nbsp; execute sqls to create tables and generate binlogs
-- &nbsp; dump and parse binlogs
-- &nbsp; wait binlog_parse_millis for all binlogs to be parsed
-- you may increase binlog_parse_millis for big transactions
+- 每个测试用例会：
+- &nbsp; &nbsp; &nbsp; &nbsp; 执行 sql 并生成 binlog
+- &nbsp; &nbsp; &nbsp; &nbsp; 获取 binlog 并解析
+- &nbsp; &nbsp; &nbsp; &nbsp; 等待 binlog_parse_millis 以将所有 binlog 解析完毕
+- 对于大事务，可能需要增大 binlog_parse_millis
 
-## Examples
+## 用例
 ```rust
 fn main() {
     let env_path = env::current_dir().unwrap().join("example/src/.env");
@@ -165,8 +165,8 @@ async fn start_client(url: String, server_id: u64, binlog_filename: String, binl
 }
 ```
 
-### Example 1: parse binlogs with binlog-transaction-compression disabled
-- execute sqls
+### 用例 1: 解析关闭 binlog-transaction-compression 的事务
+- 执行 sql 
 ```sql
 flush logs;
 
@@ -182,7 +182,7 @@ DROP TABLE test_tb;
 commit;
 ```
 
-- show binlog events
+- 查看 binlog 事件
 ```sql
 mysql> show binary logs;
 +------------------+-----------+
@@ -214,7 +214,7 @@ mysql> show binlog events in 'mysql-bin.000050';
 +------------------+------+----------------+-----------+-------------+------------------------------------------------------------------------+
 ```
 
-- binlogs parsed
+- 解析出的 binlog
 ```
 header: EventHeader { timestamp: 0, event_type: 4, server_id: 1, event_length: 47, next_event_position: 0, event_flags: 32 }
 data: Rotate(RotateEvent { binlog_filename: "mysql-bin.000050", binlog_position: 194 })
@@ -268,8 +268,8 @@ header: EventHeader { timestamp: 1704443769, event_type: 2, server_id: 1, event_
 data: Query(QueryEvent { thread_id: 493, exec_time: 0, error_code: 0, schema: "test_db", query: "DROP TABLE `test_tb` /* generated by server */" })
 ```
 
-### Example 2: parse binlogs with binlog-transaction-compression enabled
-- execute sqls
+### 用例 2: 解析开启 binlog-transaction-compression 的 binlog
+- 执行 sql 
 ```sql
 flush logs;
 
@@ -285,7 +285,7 @@ DROP TABLE test_tb;
 commit;
 ```
 
-- show binlog events
+- 查看 binlog 事件
 ```sql
 mysql> show binary logs;
 +------------------+-----------+-----------+
@@ -323,7 +323,7 @@ mysql> show binlog events in 'mysql-bin.000033';
 +------------------+------+---------------------+-----------+-------------+----------------------------------------------------------------------------+
 ```
 
-- binlogs parsed
+- 解析出的 binlog
 ```
 header: EventHeader { timestamp: 1704445709, event_type: 15, server_id: 1, event_length: 122, next_event_position: 126, event_flags: 0 }
 data: FormatDescription(FormatDescriptionEvent { binlog_version: 4, server_version: "8.0.31\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", create_timestamp: 0, header_length: 19, checksum_type: CRC32 })
@@ -362,7 +362,7 @@ header: EventHeader { timestamp: 1704445717, event_type: 2, server_id: 1, event_
 data: Query(QueryEvent { thread_id: 8, exec_time: 0, error_code: 0, schema: "test_db", query: "DROP TABLE `test_tb` /* generated by server */" })
 ```
 
-### Example 3: parse json column to string
+### 用例 3: 将 json 字段解析成 string
 ```rust
 fn parse_json_columns(data: EventData) {
     let parse_row = |row: RowEvent| {
@@ -398,7 +398,7 @@ fn parse_json_columns(data: EventData) {
 }
 ```
 
-- execute sqls
+- 执行 sql 
 ```sql
 
 CREATE TABLE test_db_1.json_test(id INT AUTO_INCREMENT, json_col JSON, PRIMARY KEY(id));
@@ -409,14 +409,14 @@ INSERT INTO test_db_1.json_test VALUES (NULL, '{"中文":"😀"}');
 commit;
 ```
 
-- parsed json column values:
+- 解析出的 json 字段
 ```
 json column: {"k.0":0,"k.1":1,"k.-1":-1,"k.[]":[],"k.{}":{},"k.3.14":3.14,"k.null":null,"k.true":true,"k.32767":32767,"k.32768":32768,"k.false":false,"k.-32768":-32768,"k.-32769":-32769,"k.string":"string","k.2147483647":2147483647,"k.2147483648":2147483648,"k.true_false":[true,false],"k.-2147483648":-2147483648,"k.-2147483649":-2147483649,"k.18446744073709551615":18446744073709551615,"k.18446744073709551616":18446744073709552000}
 
 json column: {"中文":"😀"}
 ```
 
-### Example 4: parse binlog file
+### 用例 4: 解析 binlog 文件
 ```rust
 async fn parse_file() {
     let file_path = "path-to-binlog-file";
