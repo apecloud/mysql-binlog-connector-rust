@@ -389,85 +389,19 @@ mod test {
 
     #[test]
     #[serial]
-    fn test_scalar_negative_integer() {
-        let origin_values = vec!["-1"];
-        run_json_test(&origin_values, &origin_values, true);
-    }
-
-    #[test]
-    #[serial]
-    fn test_scalar_positive_integer() {
-        let origin_values = vec!["1"];
-        run_json_test(&origin_values, &origin_values, true);
-    }
-
-    #[test]
-    #[serial]
-    fn test_scalar_max_positive_int16() {
-        let origin_values = vec!["32767"];
-        run_json_test(&origin_values, &origin_values, true);
-    }
-
-    #[test]
-    #[serial]
-    fn test_scalar_int32() {
-        let origin_values = vec!["32768"];
-        run_json_test(&origin_values, &origin_values, true);
-    }
-
-    #[test]
-    #[serial]
-    fn test_scalar_min_negative_int16() {
-        let origin_values = vec!["-32768"];
-        run_json_test(&origin_values, &origin_values, true);
-    }
-
-    #[test]
-    #[serial]
-    fn test_scalar_negative_int32() {
-        let origin_values = vec!["-32769"];
-        run_json_test(&origin_values, &origin_values, true);
-    }
-
-    #[test]
-    #[serial]
-    fn test_scalar_max_positive_int32() {
-        let origin_values = vec!["2147483647"];
-        run_json_test(&origin_values, &origin_values, true);
-    }
-
-    #[test]
-    #[serial]
-    fn test_scalar_positive_int64() {
-        let origin_values = vec!["2147483648"];
-        run_json_test(&origin_values, &origin_values, true);
-    }
-
-    #[test]
-    #[serial]
-    fn test_scalar_min_negative_int32() {
-        let origin_values = vec!["-2147483648"];
-        run_json_test(&origin_values, &origin_values, true);
-    }
-
-    #[test]
-    #[serial]
-    fn test_scalar_negative_int64() {
-        let origin_values = vec!["-2147483649"];
-        run_json_test(&origin_values, &origin_values, true);
-    }
-
-    #[test]
-    #[serial]
-    fn test_scalar_uint64() {
-        let origin_values = vec!["18446744073709551615"];
-        run_json_test(&origin_values, &origin_values, true);
-    }
-
-    #[test]
-    #[serial]
-    fn test_scalar_uint64_overflow() {
-        let origin_values = vec!["18446744073709551616"];
+    fn test_scalar_integer() {
+        let origin_values: Vec<&str> = vec![
+            "0",
+            format!("{}", i8::MAX).leak(),
+            format!("{}", i8::MIN).leak(),
+            format!("{}", i16::MAX).leak(),
+            format!("{}", i16::MIN).leak(),
+            format!("{}", i32::MAX).leak(),
+            format!("{}", i32::MIN).leak(),
+            format!("{}", i64::MAX).leak(),
+            format!("{}", i64::MIN).leak(),
+            format!("{}", u64::MAX).leak(),
+        ];
         run_json_test(&origin_values, &origin_values, true);
     }
 

@@ -37,10 +37,11 @@ async fn dump_and_parse() {
         let (header, data) = stream.read().await.unwrap();
         println!("header: {:?}", header);
         println!("data: {:?}", data);
-        println!("");
+        println!();
     }
 }
 
+#[allow(dead_code)]
 async fn parse_file() {
     let file_path = "path-to-binlog-file";
     let mut file = File::open(file_path).unwrap();
@@ -54,10 +55,11 @@ async fn parse_file() {
     while let Ok((header, data)) = parser.next(&mut file) {
         println!("header: {:?}", header);
         println!("data: {:?}", data);
-        println!("");
+        println!();
     }
 }
 
+#[allow(dead_code)]
 fn parse_json_columns(data: EventData) {
     let parse_row = |row: RowEvent| {
         for column_value in row.column_values {

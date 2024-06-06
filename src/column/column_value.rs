@@ -151,6 +151,7 @@ impl ColumnValue {
         Ok(value)
     }
 
+    #[allow(clippy::needless_range_loop)]
     fn parse_bit(cursor: &mut Cursor<&Vec<u8>>, column_meta: u16) -> Result<u64, BinlogError> {
         let bit_count = (column_meta >> 8) * 8 + (column_meta & 0xFF);
         let bytes = cursor.read_bits_as_bytes(bit_count as usize, true)?;
@@ -181,19 +182,52 @@ impl ColumnValue {
     }
 
     fn parse_time2(cursor: &mut Cursor<&Vec<u8>>, column_meta: u16) -> Result<String, BinlogError> {
-        // Stored as 3-byte value,
-        // The number of decimals for the fractional part is stored in the table metadata
-        // as a one byte value. The number of bytes that follow the 3 byte time
-        // value can be calculated with the following formula: (decimals + 1) / 2
-        let time_val = cursor.read_u24::<BigEndian>()?;
-        let hour = (time_val >> 12) % (1 << 10);
-        let minute = (time_val >> 6) % (1 << 6);
-        let second = time_val % (1 << 6);
-        let micros = Self::parse_fraction(cursor, column_meta)?;
-        Ok(format!(
-            "{:02}:{:02}:{:02}.{:06}",
-            hour, minute, second, micros
-        ))
+        // (in big endian)
+
+        // 1 bit sign (1= non-negative, 0= negative)
+        // 1 bit unused (reserved for future extensions)
+        // 10 bits hour (0-838)
+        // 6 bits minute (0-59)
+        // 6 bits second (0-59)
+
+        // (3 bytes in total)
+
+        // + fractional-seconds storage (size depends on meta)
+
+        // refer to: https://github.com/debezium/debezium/blob/main/debezium-connector-binlog/src/main/java/io/debezium/connector/binlog/event/RowDeserializers.java#L341
+
+        let fraction_bytes = ((column_meta + 1) / 2) as usize;
+        let payload_bytes = 3 + fraction_bytes;
+        let payload_bits = payload_bytes * 8;
+
+        let mut time = cursor.read_uint::<BigEndian>(payload_bytes)?;
+        let negative = Self::bit_slice(time, 0, 1, payload_bits) == 0;
+
+        if negative {
+            time = !time + 1;
+        }
+
+        let hour = Self::bit_slice(time, 2, 10, payload_bits);
+        let minute = Self::bit_slice(time, 12, 6, payload_bits);
+        let second = Self::bit_slice(time, 18, 6, payload_bits);
+
+        let mut micro_second = 0;
+        if fraction_bytes > 0 {
+            let fraction: u64 = Self::bit_slice(time, 24, fraction_bytes * 8, payload_bits);
+            micro_second = fraction * 10_000 / u64::pow(100, fraction_bytes as u32 - 1);
+        }
+
+        if negative {
+            Ok(format!(
+                "-{:02}:{:02}:{:02}.{:06}",
+                hour, minute, second, micro_second
+            ))
+        } else {
+            Ok(format!(
+                "{:02}:{:02}:{:02}.{:06}",
+                hour, minute, second, micro_second
+            ))
+        }
     }
 
     fn parse_fraction(cursor: &mut Cursor<&Vec<u8>>, column_meta: u16) -> Result<u32, BinlogError> {
@@ -278,6 +312,7 @@ impl ColumnValue {
         cursor.read_bytes(size)
     }
 
+    #[allow(clippy::needless_range_loop)]
     pub fn parse_decimal(
         cursor: &mut Cursor<&Vec<u8>>,
         precision: usize,
@@ -373,5 +408,9 @@ impl ColumnValue {
         } else {
             Ok(intg_str + "." + frac_str.as_str())
         }
+    }
+
+    fn bit_slice(value: u64, bit_offset: usize, num_bits: usize, payload_size: usize) -> u64 {
+        (value >> (payload_size - (bit_offset + num_bits))) & ((1 << num_bits) - 1)
     }
 }

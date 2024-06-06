@@ -4,6 +4,7 @@ use lazy_static::lazy_static;
 use openssl::base64;
 
 // refer: https://github.com/osheroff/mysql-binlog-connector-java/blob/master/src/main/java/com/github/shyiko/mysql/binlog/event/deserialization/json/JsonStringFormatter.java
+#[derive(Default)]
 pub struct JsonStringFormatter {
     sb: String,
 }
@@ -13,6 +14,7 @@ const ESCAPE_GENERIC: i32 = -1;
 lazy_static! {
     static ref ESCAPES: [i32; 128] = {
         let mut escape = [0; 128];
+        #[allow(clippy::needless_range_loop)]
         for i in 0..32 {
             escape[i] = ESCAPE_GENERIC;
         }
@@ -32,10 +34,6 @@ const HEX_CODES: [char; 16] = [
 ];
 
 impl JsonStringFormatter {
-    pub fn new() -> Self {
-        Self { sb: String::new() }
-    }
-
     pub fn get_string(&self) -> String {
         self.sb.clone()
     }

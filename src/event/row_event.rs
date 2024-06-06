@@ -16,10 +16,11 @@ pub struct RowEvent {
 }
 
 impl RowEvent {
+    #[allow(clippy::needless_range_loop)]
     pub fn parse(
         cursor: &mut Cursor<&Vec<u8>>,
         table_map_event: &TableMapEvent,
-        included_columns: &Vec<bool>,
+        included_columns: &[bool],
     ) -> Result<Self, BinlogError> {
         let null_columns = cursor.read_bits(included_columns.len(), false)?;
         let mut column_values = Vec::with_capacity(table_map_event.column_types.len());
