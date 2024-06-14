@@ -4,13 +4,13 @@ pub(crate) mod test {
     pub struct Env {}
 
     impl Env {
-        const ENV_FILE: &str = "tests/.env";
+        const ENV_FILE: &'static str = "tests/.env";
 
-        pub const DB_URL: &str = "db_url";
-        pub const SERVER_ID: &str = "server_id";
-        pub const DEFAULT_DB: &str = "default_db";
-        pub const DEFAULT_TB: &str = "default_tb";
-        pub const BINLOG_PARSE_MILLIS: &str = "binlog_parse_millis";
+        pub const DB_URL: &'static str = "db_url";
+        pub const SERVER_ID: &'static str = "server_id";
+        pub const DEFAULT_DB: &'static str = "default_db";
+        pub const DEFAULT_TB: &'static str = "default_tb";
+        pub const BINLOG_PARSE_MILLIS: &'static str = "binlog_parse_millis";
 
         pub fn load_vars() -> HashMap<String, String> {
             let env_path = env::current_dir().unwrap().join(Self::ENV_FILE);

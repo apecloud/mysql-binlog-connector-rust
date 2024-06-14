@@ -24,7 +24,7 @@ impl JsonBinary<'_> {
             return Ok(std::str::from_utf8(bytes).unwrap().to_string());
         }
 
-        let mut formatter = JsonStringFormatter::new();
+        let mut formatter = JsonStringFormatter::default();
         Self::parse(bytes, &mut formatter)?;
         Ok(formatter.get_string())
     }
@@ -398,11 +398,7 @@ impl JsonBinary<'_> {
     }
 
     fn read_uint64(&mut self) -> Result<u64, BinlogError> {
-        let mut big_endian: [u8; 8] = [0; 8];
-        for i in 0..8 {
-            big_endian[i] = self.reader.read_u8()?;
-        }
-        Ok(u64::from_be_bytes(big_endian))
+        Ok(self.reader.read_u64::<LittleEndian>()?)
     }
 
     fn read_as_string(&mut self, length: usize) -> Result<String, BinlogError> {

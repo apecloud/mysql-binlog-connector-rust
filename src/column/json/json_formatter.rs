@@ -32,6 +32,7 @@ pub trait JsonFormatter {
 
     fn value_date(&mut self, year: i32, month: i32, day: i32);
 
+    #[allow(clippy::too_many_arguments)]
     fn value_datetime(
         &mut self,
         year: i32,
