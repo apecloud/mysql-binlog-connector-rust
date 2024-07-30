@@ -31,4 +31,7 @@ pub enum BinlogError {
 
     #[error("parse json error: {0}")]
     ParseJsonError(String),
+
+    #[error("invalid gtid: {0}")]
+    InvalidGtid(String),
 }

@@ -21,7 +21,7 @@ impl JsonBinary<'_> {
         /* check for mariaDB-format JSON strings inside columns marked JSON */
         let is_json_string = bytes[0] > 0x0f;
         if is_json_string {
-            return Ok(std::str::from_utf8(bytes).unwrap().to_string());
+            return Ok(String::from_utf8_lossy(bytes).to_string());
         }
 
         let mut formatter = JsonStringFormatter::default();

@@ -23,12 +23,16 @@ async fn dump_and_parse() {
     let server_id: u64 = env::var("server_id").unwrap().parse().unwrap();
     let binlog_filename = env::var("binlog_filename").unwrap();
     let binlog_position: u32 = env::var("binlog_position").unwrap().parse().unwrap();
+    let gtid_enabled: bool = env::var("gtid_enabled").unwrap().parse().unwrap();
+    let gtid_set = env::var("gtid_set").unwrap();
 
     let mut client = BinlogClient {
         url,
         binlog_filename,
         binlog_position,
         server_id,
+        gtid_enabled,
+        gtid_set,
     };
 
     let mut stream = client.connect().await.unwrap();
