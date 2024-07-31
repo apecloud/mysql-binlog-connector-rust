@@ -92,7 +92,7 @@ impl UuidSet {
         true
     }
 
-    pub fn join_adjacent_intervals(&mut self, index: usize) {
+    fn join_adjacent_intervals(&mut self, index: usize) {
         if self.intervals.is_empty() {
             return;
         }

@@ -16,6 +16,11 @@ impl DumpBinlogGtidCommand {
         let mut buf = Vec::new();
         buf.write_u8(CommandType::BinlogDumpGtid as u8)?;
 
+        // BINLOG_DUMP_NEVER_STOP           = 0x00
+        // BINLOG_DUMP_NON_BLOCK            = 0x01
+        // BINLOG_SEND_ANNOTATE_ROWS_EVENT  = 0x02
+        // BINLOG_THROUGH_POSITION          = 0x02
+        // BINLOG_THROUGH_GTID              = 0x04
         let binlog_flags = 4;
         buf.write_u16::<LittleEndian>(binlog_flags)?;
 
@@ -36,7 +41,7 @@ impl DumpBinlogGtidCommand {
 
         buf.write_u64::<LittleEndian>(self.gtid_set.map.len() as u64)?;
         for (uuid, uuid_set) in self.gtid_set.map.iter() {
-            let uuid_bytes = Self::hex_to_byte_array(&uuid.replace('-', ""))?;
+            let uuid_bytes = Self::hex_to_bytes(&uuid.replace('-', ""))?;
             buf.write_all(&uuid_bytes)?;
 
             // intervals
@@ -50,7 +55,7 @@ impl DumpBinlogGtidCommand {
         Ok(buf)
     }
 
-    fn hex_to_byte_array(uuid: &str) -> Result<Vec<u8>, BinlogError> {
+    fn hex_to_bytes(uuid: &str) -> Result<Vec<u8>, BinlogError> {
         let mut bytes = Vec::with_capacity(uuid.len() / 2);
         for i in (0..uuid.len()).step_by(2) {
             let hex_byte = &uuid[i..i + 2];
