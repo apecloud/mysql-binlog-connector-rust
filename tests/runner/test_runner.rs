@@ -108,6 +108,8 @@ pub(crate) mod test {
                 binlog_filename,
                 binlog_position,
                 server_id: self.server_id,
+                gtid_enabled: false,
+                gtid_set: String::new(),
             };
 
             let all_events = Arc::new(Mutex::new(Vec::new()));
@@ -178,7 +180,7 @@ pub(crate) mod test {
             }
 
             // get current binlog info
-            let (binlog_filename, binlog_position) =
+            let (binlog_filename, binlog_position, _) =
                 CommandUtil::fetch_binlog_info(&mut channel).await?;
 
             for sql in test_sqls {

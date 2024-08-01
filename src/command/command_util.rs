@@ -1,4 +1,5 @@
 use crate::{
+    binlog_client::BinlogClient,
     binlog_error::BinlogError,
     constants::MysqlRespCode,
     event::checksum_type::ChecksumType,
@@ -8,7 +9,10 @@ use crate::{
     },
 };
 
-use super::{dump_binlog_command::DumpBinlogCommand, query_command::QueryCommand};
+use super::{
+    dump_binlog_command::DumpBinlogCommand, dump_binlog_gtid_command::DumpBinlogGtidCommand,
+    gtid_set::GtidSet, query_command::QueryCommand,
+};
 
 pub struct CommandUtil {}
 
@@ -49,7 +53,7 @@ impl CommandUtil {
 
     pub async fn fetch_binlog_info(
         channel: &mut PacketChannel,
-    ) -> Result<(String, u32), BinlogError> {
+    ) -> Result<(String, u32, String), BinlogError> {
         let result_sets = Self::execute_query(channel, "show master status").await?;
         if result_sets.is_empty() {
             return Err(BinlogError::ConnectError(
@@ -58,7 +62,8 @@ impl CommandUtil {
         }
         let binlog_filename = result_sets[0].values[0].clone();
         let binlog_position = result_sets[0].values[1].clone().parse::<u32>()?;
-        Ok((binlog_filename, binlog_position))
+        let gtid_set = result_sets[0].values[4].clone();
+        Ok((binlog_filename, binlog_position, gtid_set))
     }
 
     pub async fn fetch_binlog_checksum(
@@ -86,17 +91,22 @@ impl CommandUtil {
 
     pub async fn dump_binlog(
         channel: &mut PacketChannel,
-        binlog_filename: &str,
-        binlog_position: u32,
-        server_id: u64,
+        client: &BinlogClient,
     ) -> Result<(), BinlogError> {
-        let mut command = DumpBinlogCommand {
-            binlog_filename: binlog_filename.to_string(),
-            binlog_position,
-            server_id,
+        let buf = if client.gtid_enabled {
+            let mut command = DumpBinlogGtidCommand {
+                server_id: client.server_id,
+                gtid_set: GtidSet::new(&client.gtid_set)?,
+            };
+            command.to_bytes()?
+        } else {
+            let mut command = DumpBinlogCommand {
+                binlog_filename: client.binlog_filename.clone(),
+                binlog_position: client.binlog_position,
+                server_id: client.server_id,
+            };
+            command.to_bytes()?
         };
-
-        let buf = command.to_bytes()?;
         channel.write(&buf, 0).await?;
         Ok(())
     }

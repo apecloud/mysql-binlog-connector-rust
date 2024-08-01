@@ -10,6 +10,10 @@ English | [中文](README_ZH.md)
 - mysql 5.7 (tested in mysql:5.7.40)
 - mysql 8.0 (tested in mysql:8.0.31)
 
+### Supported replication type
+- binlog-file-position-based replication
+- gtid-based replication
+
 ### Supported event types
 - FORMAT_DESCRIPTION_EVENT
 - ROTATE_EVENT
@@ -131,27 +135,26 @@ cargo test --package mysql-binlog-connector-rust --test integration_test
 ## Examples
 ```rust
 fn main() {
+    block_on(dump_and_parse())
+}
+
+async fn dump_and_parse() {
     let env_path = env::current_dir().unwrap().join("example/src/.env");
     dotenv::from_path(env_path).unwrap();
-    let db_url = env::var("db_url").unwrap();
+    let url = env::var("db_url").unwrap();
     let server_id: u64 = env::var("server_id").unwrap().parse().unwrap();
     let binlog_filename = env::var("binlog_filename").unwrap();
     let binlog_position: u32 = env::var("binlog_position").unwrap().parse().unwrap();
+    let gtid_enabled: bool = env::var("gtid_enabled").unwrap().parse().unwrap();
+    let gtid_set = env::var("gtid_set").unwrap();
 
-    block_on(start_client(
-        db_url,
-        server_id,
-        binlog_filename,
-        binlog_position,
-    ));
-}
-
-async fn start_client(url: String, server_id: u64, binlog_filename: String, binlog_position: u32) {
     let mut client = BinlogClient {
         url,
         binlog_filename,
         binlog_position,
         server_id,
+        gtid_enabled,
+        gtid_set,
     };
 
     let mut stream = client.connect().await.unwrap();
@@ -160,7 +163,7 @@ async fn start_client(url: String, server_id: u64, binlog_filename: String, binl
         let (header, data) = stream.read().await.unwrap();
         println!("header: {:?}", header);
         println!("data: {:?}", data);
-        println!("");
+        println!();
     }
 }
 ```

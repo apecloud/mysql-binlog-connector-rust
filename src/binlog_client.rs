@@ -7,11 +7,14 @@ use crate::{
     command::{authenticator::Authenticator, command_util::CommandUtil},
 };
 
+#[derive(Default)]
 pub struct BinlogClient {
     pub url: String,
     pub binlog_filename: String,
     pub binlog_position: u32,
     pub server_id: u64,
+    pub gtid_enabled: bool,
+    pub gtid_set: String,
 }
 
 const MIN_BINLOG_POSITION: u32 = 4;
@@ -22,16 +25,23 @@ impl BinlogClient {
         let mut authenticator = Authenticator::new(&self.url)?;
         let mut channel = authenticator.connect().await?;
 
-        // fetch binlog info
-        if self.binlog_filename.is_empty() {
-            let (binlog_filename, binlog_position) =
-                CommandUtil::fetch_binlog_info(&mut channel).await?;
-            self.binlog_filename = binlog_filename;
-            self.binlog_position = binlog_position;
-        }
+        if self.gtid_enabled {
+            if self.gtid_set.is_empty() {
+                let (_, _, gtid_set) = CommandUtil::fetch_binlog_info(&mut channel).await?;
+                self.gtid_set = gtid_set;
+            }
+        } else {
+            // fetch binlog info
+            if self.binlog_filename.is_empty() {
+                let (binlog_filename, binlog_position, _) =
+                    CommandUtil::fetch_binlog_info(&mut channel).await?;
+                self.binlog_filename = binlog_filename;
+                self.binlog_position = binlog_position;
+            }
 
-        if self.binlog_position < MIN_BINLOG_POSITION {
-            self.binlog_position = MIN_BINLOG_POSITION;
+            if self.binlog_position < MIN_BINLOG_POSITION {
+                self.binlog_position = MIN_BINLOG_POSITION;
+            }
         }
 
         // fetch binlog checksum
@@ -41,13 +51,7 @@ impl BinlogClient {
         CommandUtil::setup_binlog_connection(&mut channel).await?;
 
         // dump binlog
-        CommandUtil::dump_binlog(
-            &mut channel,
-            &self.binlog_filename,
-            self.binlog_position,
-            self.server_id,
-        )
-        .await?;
+        CommandUtil::dump_binlog(&mut channel, self).await?;
 
         // list for binlog
         let parser = BinlogParser {
