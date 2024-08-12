@@ -26,9 +26,6 @@ pub enum BinlogError {
     #[error("parse url error: {0}")]
     ParseUrlError(#[from] url::ParseError),
 
-    #[error("open-ssl error: {0}")]
-    OpenSslError(#[from] openssl::error::ErrorStack),
-
     #[error("parse json error: {0}")]
     ParseJsonError(String),
 

@@ -1,5 +1,4 @@
 use async_recursion::async_recursion;
-use openssl::rsa::Rsa;
 use url::Url;
 
 use crate::{
@@ -227,11 +226,9 @@ impl Authenticator {
         let (rsa_res, sequence) = channel.read_with_sequece().await?;
         match rsa_res[0] {
             0x01 => {
-                let rsa_key = Rsa::public_key_from_pem(&rsa_res[1..]).unwrap();
-
                 // try sha2 authentication with rsa
                 let mut command = AuthSha2RsaPasswordCommand {
-                    rsa_key,
+                    rsa_res: rsa_res[1..].to_vec(),
                     password: self.password.clone(),
                     scramble: self.scramble.clone(),
                 };

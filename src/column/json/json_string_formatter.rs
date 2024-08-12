@@ -1,7 +1,8 @@
 use super::json_formatter::JsonFormatter;
 use crate::column::column_type::ColumnType;
 use lazy_static::lazy_static;
-use openssl::base64;
+use base64::{engine::general_purpose::STANDARD, Engine};
+
 
 // refer: https://github.com/osheroff/mysql-binlog-connector-java/blob/master/src/main/java/com/github/shyiko/mysql/binlog/event/deserialization/json/JsonStringFormatter.java
 #[derive(Default)]
@@ -247,7 +248,7 @@ impl JsonFormatter for JsonStringFormatter {
 
     fn value_opaque(&mut self, _column_type: &ColumnType, value: &[u8]) {
         self.sb.push('"');
-        self.sb.push_str(&base64::encode_block(value));
+        self.sb.push_str(&STANDARD.encode(value));
         self.sb.push('"');
     }
 
