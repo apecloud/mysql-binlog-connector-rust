@@ -5,7 +5,7 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 pub enum EventType {
     // refer: https://github.com/mysql/mysql-server/blob/trunk/libs/mysql/binlog/event/binlog_event.h
     #[num_enum(default)]
-    Unkown = 0,
+    Unknown = 0,
     StartV3 = 1,
     Query = 2,
     Stop = 3,
@@ -54,7 +54,10 @@ pub enum EventType {
 
 impl EventType {
     pub fn from_code(code: u8) -> EventType {
-        EventType::try_from(code).unwrap()
+        if let Ok(res) = EventType::try_from(code) {
+            return res;
+        }
+        EventType::Unknown
     }
 
     pub fn to_code(event_type: EventType) -> u8 {
