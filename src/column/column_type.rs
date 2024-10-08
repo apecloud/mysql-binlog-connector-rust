@@ -10,7 +10,7 @@ use crate::binlog_error::BinlogError;
 #[repr(i16)]
 pub enum ColumnType {
     #[num_enum(default)]
-    Unkown = -1,
+    Unknown = -1,
     Decimal = 0,
     Tiny = 1,
     Short = 2,
@@ -52,7 +52,10 @@ pub enum ColumnType {
 
 impl ColumnType {
     pub fn from_code(code: u8) -> ColumnType {
-        ColumnType::try_from(code as i16).unwrap()
+        if let Ok(res) = ColumnType::try_from(code as i16) {
+            return res;
+        }
+        ColumnType::Unknown
     }
 
     /// The column type of MYSQL_TYPE_STRING and MYSQL_TYPE_ENUM are String in binlog, we need to get
