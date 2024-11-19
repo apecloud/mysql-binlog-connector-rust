@@ -1,4 +1,5 @@
 use async_recursion::async_recursion;
+use percent_encoding::percent_decode_str;
 use url::Url;
 
 use crate::{
@@ -30,25 +31,25 @@ impl Authenticator {
     pub fn new(url: &str) -> Result<Self, BinlogError> {
         // url example: mysql://root:123456@127.0.0.1:3307/test_db?ssl-mode=disabled
         let url_info = Url::parse(url)?;
-        let host = url_info.host_str().unwrap().to_string();
-        let port = format!("{}", url_info.port().unwrap());
-        let username = url_info.username().to_string();
-        let password = url_info.password().unwrap().to_string();
-        let mut schema = "".to_string();
+        let host = url_info.host_str().unwrap_or("");
+        let port = format!("{}", url_info.port().unwrap_or(3306));
+        let username = url_info.username();
+        let password = url_info.password().unwrap_or("");
+        let mut schema = "";
         let pathes = url_info.path_segments().map(|c| c.collect::<Vec<_>>());
         if let Some(vec) = pathes {
             if !vec.is_empty() {
-                schema = vec[0].to_string();
+                schema = vec[0];
             }
         }
 
         Ok(Self {
-            host,
+            host: percent_decode_str(host).decode_utf8_lossy().to_string(),
             port,
-            username,
-            password,
-            schema,
-            scramble: "".to_string(),
+            username: percent_decode_str(username).decode_utf8_lossy().to_string(),
+            password: percent_decode_str(password).decode_utf8_lossy().to_string(),
+            schema: percent_decode_str(schema).decode_utf8_lossy().to_string(),
+            scramble: String::new(),
             collation: 0,
         })
     }
