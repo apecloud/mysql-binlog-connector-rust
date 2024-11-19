@@ -9,20 +9,12 @@ pub enum ColumnValue {
     None,
     // A 8 bit signed integer
     Tiny(i8),
-    // A 8 bit unsigned integer
-    UnsignedTiny(u8),
     // A 16 bit signed integer
     Short(i16),
-    // A 16 bit unsigned integer
-    UnsignedShort(u16),
     // A 32 bit signed integer
     Long(i32),
-    // A 32 bit unsigned integer
-    UnsignedLong(u32),
     // A 64 bit signed integer
     LongLong(i64),
-    // A 64 bit unsigned integer
-    UnsignedLongLong(u64),
     // A 32 bit floating point number
     Float(f32),
     // A 64 bit floating point number
@@ -60,7 +52,6 @@ pub enum ColumnValue {
     // refer: https://dev.mysql.com/doc/refman/8.0/en/enum.html
     // An ENUM column can have a maximum of 65,535 distinct elements.
     Enum(u32),
-    // TODO
     Json(Vec<u8>),
 }
 
