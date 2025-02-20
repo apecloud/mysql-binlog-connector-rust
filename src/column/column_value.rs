@@ -233,7 +233,7 @@ impl ColumnValue {
 
     fn parse_timestamp(cursor: &mut Cursor<&Vec<u8>>) -> Result<i64, BinlogError> {
         // Stored as a 4 byte UNIX timestamp (number of seconds since 00:00, Jan 1 1970 UTC).
-        Ok((cursor.read_u32::<LittleEndian>()? * 1000) as i64)
+        Ok((cursor.read_u32::<LittleEndian>()?) as i64 * 1000000)
     }
 
     fn parse_timestamp2(
