@@ -83,10 +83,23 @@ impl CommandUtil {
             sql: "set @master_binlog_checksum= @@global.binlog_checksum".to_string(),
         };
         channel.write(&command.to_bytes()?, 0).await?;
-
         let buf = channel.read().await?;
-        Self::check_error_packet(&buf)?;
-        Ok(())
+        Self::check_error_packet(&buf)
+    }
+
+    pub async fn enable_heartbeat(
+        channel: &mut PacketChannel,
+        heartbeat_interval_secs: u64,
+    ) -> Result<(), BinlogError> {
+        let mut command = QueryCommand {
+            sql: format!(
+                "set @master_heartbeat_period={}",
+                heartbeat_interval_secs * 1000_000_000
+            ),
+        };
+        channel.write(&command.to_bytes()?, 0).await?;
+        let buf = channel.read().await?;
+        Self::check_error_packet(&buf)
     }
 
     pub async fn dump_binlog(
@@ -107,8 +120,7 @@ impl CommandUtil {
             };
             command.to_bytes()?
         };
-        channel.write(&buf, 0).await?;
-        Ok(())
+        channel.write(&buf, 0).await
     }
 
     pub fn parse_result(buf: &Vec<u8>) -> Result<(), BinlogError> {

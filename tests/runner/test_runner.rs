@@ -110,6 +110,7 @@ pub(crate) mod test {
                 server_id: self.server_id,
                 gtid_enabled: false,
                 gtid_set: String::new(),
+                heartbeat_interval_secs: 5,
             };
 
             let all_events = Arc::new(Mutex::new(Vec::new()));

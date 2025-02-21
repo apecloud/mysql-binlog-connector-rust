@@ -1,6 +1,6 @@
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
-#[derive(IntoPrimitive, TryFromPrimitive)]
+#[derive(IntoPrimitive, TryFromPrimitive, Debug)]
 #[repr(u8)]
 pub enum EventType {
     // refer: https://github.com/mysql/mysql-server/blob/trunk/libs/mysql/binlog/event/binlog_event.h

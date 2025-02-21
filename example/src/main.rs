@@ -33,6 +33,7 @@ async fn dump_and_parse() {
         server_id,
         gtid_enabled,
         gtid_set,
+        heartbeat_interval_secs: 5,
     };
 
     let mut stream = client.connect().await.unwrap();

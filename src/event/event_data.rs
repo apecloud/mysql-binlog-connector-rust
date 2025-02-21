@@ -24,4 +24,5 @@ pub enum EventData {
     Rotate(RotateEvent),
     TransactionPayload(TransactionPayloadEvent),
     RowsQuery(RowsQueryEvent),
+    HeartBeat,
 }

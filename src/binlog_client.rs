@@ -15,6 +15,7 @@ pub struct BinlogClient {
     pub server_id: u64,
     pub gtid_enabled: bool,
     pub gtid_set: String,
+    pub heartbeat_interval_secs: u64,
 }
 
 const MIN_BINLOG_POSITION: u32 = 4;
@@ -49,6 +50,10 @@ impl BinlogClient {
 
         // setup connection
         CommandUtil::setup_binlog_connection(&mut channel).await?;
+
+        if self.heartbeat_interval_secs > 0 {
+            CommandUtil::enable_heartbeat(&mut channel, self.heartbeat_interval_secs).await?;
+        }
 
         // dump binlog
         CommandUtil::dump_binlog(&mut channel, self).await?;
