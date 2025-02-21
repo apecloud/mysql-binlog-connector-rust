@@ -7,7 +7,7 @@ members = [
 [package]
 edition = "2021"
 name = "mysql-binlog-connector-rust"
-version = "0.2.3"
+version = "0.2.4"
 authors = ["Shicai Xu <chenglingsu@126.com>"]
 categories = ["database"]
 description = "mysql binlog connector"
