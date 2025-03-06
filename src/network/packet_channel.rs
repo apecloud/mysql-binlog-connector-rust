@@ -40,7 +40,12 @@ impl PacketChannel {
         let sequence = rdr.read_u8()?;
 
         let mut buf = vec![0u8; length];
-        self.stream.read_exact(&mut buf).await?;
+        // keep reading data until the complete packet is received
+        // MySQL protocol packets may require multiple reads for complete reception
+        let mut read_count = 0;
+        while read_count < length {
+            read_count += self.stream.read(&mut buf[read_count..]).await?;
+        }
         Ok((buf, sequence))
     }
 
