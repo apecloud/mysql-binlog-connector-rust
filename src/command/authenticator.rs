@@ -25,10 +25,11 @@ pub struct Authenticator {
     schema: String,
     scramble: String,
     collation: u8,
+    timeout_secs: u64,
 }
 
 impl Authenticator {
-    pub fn new(url: &str) -> Result<Self, BinlogError> {
+    pub fn new(url: &str, timeout_secs: u64) -> Result<Self, BinlogError> {
         // url example: mysql://root:123456@127.0.0.1:3307/test_db?ssl-mode=disabled
         let url_info = Url::parse(url)?;
         let host = url_info.host_str().unwrap_or("");
@@ -51,12 +52,13 @@ impl Authenticator {
             schema: percent_decode_str(schema).decode_utf8_lossy().to_string(),
             scramble: String::new(),
             collation: 0,
+            timeout_secs,
         })
     }
 
     pub async fn connect(&mut self) -> Result<PacketChannel, BinlogError> {
         // connect to hostname:port
-        let mut channel = PacketChannel::new(&self.host, &self.port).await?;
+        let mut channel = PacketChannel::new(&self.host, &self.port, self.timeout_secs).await?;
 
         // read and parse greeting packet
         let (greeting_buf, sequence) = channel.read_with_sequece().await?;

@@ -111,6 +111,7 @@ pub(crate) mod test {
                 gtid_enabled: false,
                 gtid_set: String::new(),
                 heartbeat_interval_secs: 5,
+                timeout_secs: 60,
             };
 
             let all_events = Arc::new(Mutex::new(Vec::new()));
@@ -172,7 +173,7 @@ pub(crate) mod test {
             prepare_sqls: &Vec<String>,
             test_sqls: &Vec<String>,
         ) -> Result<(String, u32), BinlogError> {
-            let mut authenticator = Authenticator::new(&self.db_url)?;
+            let mut authenticator = Authenticator::new(&self.db_url, 60)?;
             let mut channel = authenticator.connect().await?;
 
             for sql in prepare_sqls {

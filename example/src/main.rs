@@ -34,6 +34,7 @@ async fn dump_and_parse() {
         gtid_enabled,
         gtid_set,
         heartbeat_interval_secs: 5,
+        timeout_secs: 60,
     };
 
     let mut stream = client.connect().await.unwrap();

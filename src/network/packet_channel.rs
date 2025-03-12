@@ -1,20 +1,39 @@
-use std::io::{Cursor, Write};
+use std::{
+    io::{Cursor, Write},
+    time::Duration,
+};
 
-use async_std::net::TcpStream;
 use async_std::prelude::*;
+use async_std::{future::timeout, net::TcpStream};
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+use log::{debug, warn};
 
 use crate::binlog_error::BinlogError;
 
 pub struct PacketChannel {
     stream: TcpStream,
+    timeout_secs: u64,
 }
 
 impl PacketChannel {
-    pub async fn new(ip: &str, port: &str) -> Result<Self, BinlogError> {
-        let stream = TcpStream::connect(format!("{}:{}", ip, port)).await?;
-        Ok(Self { stream })
+    pub async fn new(ip: &str, port: &str, timeout_secs: u64) -> Result<Self, BinlogError> {
+        let addr = format!("{}:{}", ip, port);
+        let stream =
+            match timeout(Duration::from_secs(timeout_secs), TcpStream::connect(&addr)).await {
+                Ok(Ok(stream)) => stream,
+                Ok(Err(e)) => return Err(BinlogError::from(e)),
+                Err(_) => {
+                    return Err(BinlogError::ConnectError(format!(
+                        "Connection timeout after {} seconds while connecting to {}",
+                        timeout_secs, addr
+                    )))
+                }
+            };
+        Ok(Self {
+            stream,
+            timeout_secs,
+        })
     }
 
     pub async fn close(&self) -> Result<(), BinlogError> {
@@ -32,25 +51,70 @@ impl PacketChannel {
     }
 
     pub async fn read_with_sequece(&mut self) -> Result<(Vec<u8>, u8), BinlogError> {
-        let mut buf = vec![0u8; 4];
-        self.stream.read_exact(&mut buf).await?;
-
+        let buf = self.read_exact(4).await?;
         let mut rdr = Cursor::new(buf);
         let length = rdr.read_u24::<LittleEndian>()? as usize;
         let sequence = rdr.read_u8()?;
 
-        let mut buf = vec![0u8; length];
-        // keep reading data until the complete packet is received
-        // MySQL protocol packets may require multiple reads for complete reception
-        let mut read_count = 0;
-        while read_count < length {
-            read_count += self.stream.read(&mut buf[read_count..]).await?;
-        }
+        let buf = self.read_exact(length).await?;
         Ok((buf, sequence))
     }
 
     pub async fn read(&mut self) -> Result<Vec<u8>, BinlogError> {
         let (buf, _sequence) = Self::read_with_sequece(self).await?;
+        Ok(buf)
+    }
+
+    async fn read_exact(&mut self, length: usize) -> Result<Vec<u8>, BinlogError> {
+        let mut buf = vec![0u8; length];
+        // keep reading data until the complete packet is received
+        // MySQL protocol packets may require multiple reads for complete reception
+        let wait_data_millis = 10;
+        let max_zero_reads = self.timeout_secs * 1000 / wait_data_millis;
+        let mut read_count = 0;
+        let mut zero_reads = 0;
+
+        while read_count < length {
+            match timeout(
+                Duration::from_secs(self.timeout_secs),
+                self.stream.read(&mut buf[read_count..]),
+            )
+            .await
+            {
+                Ok(Ok(n)) => {
+                    if n == 0 {
+                        zero_reads += 1;
+                        if zero_reads >= max_zero_reads {
+                            return Err(BinlogError::UnexpectedData(format!(
+                                "Too many zero-length reads. Expected data length: {}, read so far: {}",
+                                length, read_count
+                            )));
+                        }
+                        warn!(
+                            "Stream reading binlog returns zero-length data, Expected data length: {}, read so far: {}",
+                            length, read_count
+                        );
+                        async_std::task::sleep(Duration::from_millis(wait_data_millis)).await;
+                        continue;
+                    }
+                    zero_reads = 0;
+                    read_count += n;
+                    debug!(
+                        "Stream reading binlog data, Expected data length: {}, read so far: {}",
+                        length, read_count
+                    );
+                }
+                Ok(Err(e)) => {
+                    return Err(BinlogError::from(e));
+                }
+                Err(_) => {
+                    return Err(BinlogError::UnexpectedData(format!(
+                        "Read binlog timeout, expect data length: {}, read so far: {}",
+                        length, read_count
+                    )));
+                }
+            }
+        }
         Ok(buf)
     }
 }
