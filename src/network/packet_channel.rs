@@ -51,7 +51,9 @@ impl PacketChannel {
     }
 
     pub async fn read_with_sequece(&mut self) -> Result<(Vec<u8>, u8), BinlogError> {
-        let buf = self.read_exact(4).await?;
+        let mut buf = vec![0u8; 4];
+        // do not call self.read_exact since blocked by receiving no data is expected if there are no new binlog events
+        self.stream.read_exact(&mut buf).await?;
         let mut rdr = Cursor::new(buf);
         let length = rdr.read_u24::<LittleEndian>()? as usize;
         let sequence = rdr.read_u8()?;
