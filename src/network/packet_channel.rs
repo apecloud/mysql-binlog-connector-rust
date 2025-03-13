@@ -7,7 +7,7 @@ use async_std::prelude::*;
 use async_std::{future::timeout, net::TcpStream};
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use log::{debug, warn};
+use log::{trace, warn};
 
 use crate::binlog_error::BinlogError;
 
@@ -99,9 +99,10 @@ impl PacketChannel {
                     }
                     zero_reads = 0;
                     read_count += n;
-                    debug!(
+                    trace!(
                         "Stream reading binlog data, Expected data length: {}, read so far: {}",
-                        length, read_count
+                        length,
+                        read_count
                     );
                 }
                 Ok(Err(e)) => {
