@@ -11,6 +11,8 @@ use log::{trace, warn};
 
 use crate::binlog_error::BinlogError;
 
+const MAX_PACKET_LENGTH: usize = 16777215;
+
 pub struct PacketChannel {
     stream: TcpStream,
     timeout_secs: u64,
@@ -50,15 +52,33 @@ impl PacketChannel {
         Ok(())
     }
 
-    pub async fn read_with_sequece(&mut self) -> Result<(Vec<u8>, u8), BinlogError> {
+    async fn read_packet_info(&mut self) -> Result<(usize, u8), BinlogError> {
         let mut buf = vec![0u8; 4];
         // do not call self.read_exact since blocked by receiving no data is expected if there are no new binlog events
         self.stream.read_exact(&mut buf).await?;
         let mut rdr = Cursor::new(buf);
         let length = rdr.read_u24::<LittleEndian>()? as usize;
         let sequence = rdr.read_u8()?;
+        Ok((length, sequence))
+    }
 
-        let buf = self.read_exact(length).await?;
+    pub async fn read_with_sequece(&mut self) -> Result<(Vec<u8>, u8), BinlogError> {
+        let (length, sequence) = self.read_packet_info().await?;
+        let buf = if length == MAX_PACKET_LENGTH {
+            let mut all_buf = self.read_exact(length).await?;
+            loop {
+                let (chunk_length, _) = self.read_packet_info().await?;
+                let mut chunk_buf = self.read_exact(chunk_length).await?;
+                all_buf.append(&mut chunk_buf);
+                if chunk_length != MAX_PACKET_LENGTH {
+                    break;
+                }
+            }
+            trace!("Received big binlog data, full length: {}", all_buf.len());
+            all_buf
+        } else {
+            self.read_exact(length).await?
+        };
         Ok((buf, sequence))
     }
 
