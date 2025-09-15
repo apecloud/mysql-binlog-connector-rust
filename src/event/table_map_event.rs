@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     binlog_error::BinlogError, column::column_type::ColumnType, ext::cursor_ext::CursorExt,
+    event::table_map::table_metadata::TableMetadata,
 };
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -15,6 +16,8 @@ pub struct TableMapEvent {
     pub column_types: Vec<u8>,
     pub column_metas: Vec<u16>,
     pub null_bits: Vec<bool>,
+    /// Gets table metadata for MySQL 8.0.1+
+    pub table_metadata: Option<TableMetadata>,
 }
 
 impl TableMapEvent {
@@ -50,7 +53,11 @@ impl TableMapEvent {
         // nullable_bits
         let null_bits = cursor.read_bits(column_count, false)?;
 
-        // TODO: table_metadata
+        // table_metadata (MySQL 8.0.1+ and MariaDB 10.5+)
+        let mut table_metadata = None;
+        if cursor.available() > 0 {
+            table_metadata = Some(TableMetadata::parse(cursor, &column_types)?);
+        }
 
         Ok(Self {
             table_id,
@@ -59,6 +66,7 @@ impl TableMapEvent {
             column_types,
             column_metas,
             null_bits,
+            table_metadata,
         })
     }
 

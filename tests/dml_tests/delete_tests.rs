@@ -27,6 +27,16 @@ mod test {
         assert_eq!(runner.delete_events.len(), 1);
         assert_eq!(runner.delete_events[0].rows.len(), 5);
 
+        // Verify table map events are generated for delete operations
+        assert!(!runner.table_map_events.is_empty(), "Should have table map events for delete operations");
+        
+        // Verify delete events reference the correct table ID
+        let table_event = runner.table_map_events.iter()
+            .find(|event| event.database_name == runner.default_db && event.table_name == runner.default_tb)
+            .expect("Should find table map event for default test table");
+        
+        assert_eq!(runner.delete_events[0].table_id, table_event.table_id, "Delete events should reference the correct table");
+
         // row 0
         Mock::default_check_values(
             &runner.delete_events[0].rows[0],

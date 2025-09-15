@@ -36,6 +36,18 @@ mod test {
 
         assert_eq!(runner.update_events.len(), 4);
 
+        // Verify table map events are generated for update operations
+        assert!(!runner.table_map_events.is_empty(), "Should have table map events for update operations");
+        
+        // Verify update events reference the correct table ID
+        let table_event = runner.table_map_events.iter()
+            .find(|event| event.database_name == runner.default_db && event.table_name == runner.default_tb)
+            .expect("Should find table map event for default test table");
+        
+        for update_event in &runner.update_events {
+            assert_eq!(update_event.table_id, table_event.table_id, "Update events should reference the correct table");
+        }
+
         // row 0, before
         Mock::default_check_values(
             &runner.update_events[0].rows[0].0,
