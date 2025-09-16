@@ -12,6 +12,9 @@ impl AuthSha2RsaPasswordCommand {
         password_buf.push(constants::NULL_TERMINATOR);
         let encrypted_password = password_buf.xor(self.scramble.as_bytes().to_vec());
 
-        Ok(mysql_common::crypto::encrypt(&encrypted_password, self.rsa_res.as_slice()))
+        Ok(mysql_common::crypto::encrypt(
+            &encrypted_password,
+            self.rsa_res.as_slice(),
+        ))
     }
 }

@@ -10,6 +10,7 @@ pub mod query_event;
 pub mod rotate_event;
 pub mod row_event;
 pub mod rows_query_event;
+pub mod table_map;
 pub mod table_map_event;
 pub mod transaction_payload_event;
 pub mod update_rows_event;
