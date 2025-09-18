@@ -4,8 +4,8 @@ use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    binlog_error::BinlogError, column::column_type::ColumnType, ext::cursor_ext::CursorExt,
-    event::table_map::table_metadata::TableMetadata,
+    binlog_error::BinlogError, column::column_type::ColumnType,
+    event::table_map::table_metadata::TableMetadata, ext::cursor_ext::CursorExt,
 };
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -56,7 +56,7 @@ impl TableMapEvent {
         // table_metadata (MySQL 8.0.1+ and MariaDB 10.5+)
         let mut table_metadata = None;
         if cursor.available() > 0 {
-            table_metadata = Some(TableMetadata::parse(cursor, &column_types)?);
+            table_metadata = Some(TableMetadata::parse(cursor, &column_types, &column_metas)?);
         }
 
         Ok(Self {

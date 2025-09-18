@@ -12,7 +12,8 @@ pub(crate) mod test {
         command::{authenticator::Authenticator, command_util::CommandUtil},
         event::{
             delete_rows_event::DeleteRowsEvent, event_data::EventData, query_event::QueryEvent,
-            table_map_event::TableMapEvent, update_rows_event::UpdateRowsEvent, write_rows_event::WriteRowsEvent,
+            table_map_event::TableMapEvent, update_rows_event::UpdateRowsEvent,
+            write_rows_event::WriteRowsEvent,
         },
     };
 

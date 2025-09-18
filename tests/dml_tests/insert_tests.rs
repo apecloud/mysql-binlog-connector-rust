@@ -28,16 +28,29 @@ mod test {
         assert_eq!(runner.insert_events[1].rows.len(), 1);
 
         // Verify table map events are generated for DML operations
-        assert!(!runner.table_map_events.is_empty(), "Should have table map events for DML operations");
-        
+        assert!(
+            !runner.table_map_events.is_empty(),
+            "Should have table map events for DML operations"
+        );
+
         // Verify table map events reference the correct table
-        let table_event = runner.table_map_events.iter()
-            .find(|event| event.database_name == runner.default_db && event.table_name == runner.default_tb)
+        let table_event = runner
+            .table_map_events
+            .iter()
+            .find(|event| {
+                event.database_name == runner.default_db && event.table_name == runner.default_tb
+            })
             .expect("Should find table map event for default test table");
-        
+
         // Verify insert events reference the same table ID
-        assert_eq!(runner.insert_events[0].table_id, table_event.table_id, "Insert events should reference the correct table");
-        assert_eq!(runner.insert_events[1].table_id, table_event.table_id, "Insert events should reference the correct table");
+        assert_eq!(
+            runner.insert_events[0].table_id, table_event.table_id,
+            "Insert events should reference the correct table"
+        );
+        assert_eq!(
+            runner.insert_events[1].table_id, table_event.table_id,
+            "Insert events should reference the correct table"
+        );
 
         Mock::default_check_values(
             &runner.insert_events[0].rows[0],
@@ -225,12 +238,23 @@ mod test {
         runner.execute_sqls_and_get_binlogs(&prepare_sqls, &test_sqls);
 
         // Verify we got both insert events and table map events
-        assert!(!runner.insert_events.is_empty(), "Should have received WriteRowsEvent");
-        assert!(!runner.table_map_events.is_empty(), "Should have received TableMapEvent");
+        assert!(
+            !runner.insert_events.is_empty(),
+            "Should have received WriteRowsEvent"
+        );
+        assert!(
+            !runner.table_map_events.is_empty(),
+            "Should have received TableMapEvent"
+        );
 
         // Find the table map event for our test table
-        let table_event = runner.table_map_events.iter()
-            .find(|event| event.database_name == "test_table_map_metadata" && event.table_name == "metadata_test")
+        let table_event = runner
+            .table_map_events
+            .iter()
+            .find(|event| {
+                event.database_name == "test_table_map_metadata"
+                    && event.table_name == "metadata_test"
+            })
             .expect("Should find TableMapEvent for our test table");
 
         // Verify basic table info
@@ -238,7 +262,10 @@ mod test {
         assert_eq!(table_event.table_name, "metadata_test");
 
         // Verify we have metadata
-        assert!(table_event.table_metadata.is_some(), "Table should have metadata");
+        assert!(
+            table_event.table_metadata.is_some(),
+            "Table should have metadata"
+        );
         let metadata = table_event.table_metadata.as_ref().unwrap();
 
         // Verify we have the expected number of columns
@@ -256,19 +283,34 @@ mod test {
         }
 
         // Verify signedness metadata is present for numeric columns
-        assert!(metadata.columns[0].is_signed.is_some(), "INT column should have signedness metadata");
-        assert!(metadata.columns[2].is_signed.is_some(), "TINYINT column should have signedness metadata");
-        assert!(metadata.columns[3].is_signed.is_some(), "DECIMAL column should have signedness metadata");
+        assert!(
+            metadata.columns[0].is_signed.is_some(),
+            "INT column should have signedness metadata"
+        );
+        assert!(
+            metadata.columns[2].is_signed.is_some(),
+            "TINYINT column should have signedness metadata"
+        );
+        assert!(
+            metadata.columns[3].is_signed.is_some(),
+            "DECIMAL column should have signedness metadata"
+        );
 
         // Verify charset metadata exists for string columns (when available)
         if let Some(charset_collation) = metadata.columns[1].charset_collation {
-            assert!(charset_collation > 0, "String column should have valid charset collation");
+            assert!(
+                charset_collation > 0,
+                "String column should have valid charset collation"
+            );
         }
 
         // Verify the corresponding insert event references the same table
         let insert_event = &runner.insert_events[0];
-        assert_eq!(insert_event.table_id, table_event.table_id, "Insert event should reference the same table as table map event");
-        
+        assert_eq!(
+            insert_event.table_id, table_event.table_id,
+            "Insert event should reference the same table as table map event"
+        );
+
         // Verify we have the inserted row data
         assert_eq!(insert_event.rows.len(), 1, "Should have one inserted row");
         let row = &insert_event.rows[0];
