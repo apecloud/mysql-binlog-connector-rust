@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
 use crate::{
     binlog_error::BinlogError,
@@ -74,24 +74,24 @@ impl BinlogClient {
         client
     }
 
-    pub fn with_master_heartbeat(self, heartbeat_interval_secs: u64) -> Self {
+    pub fn with_master_heartbeat(self, heartbeat_interval: Duration) -> Self {
         Self {
-            heartbeat_interval_secs,
+            heartbeat_interval_secs: heartbeat_interval.as_secs(),
             ..self
         }
     }
 
-    pub fn with_network_timeout(self, timeout_secs: u64) -> Self {
+    pub fn with_read_timeout(self, timeout: Duration) -> Self {
         Self {
-            timeout_secs,
+            timeout_secs: timeout.as_secs(),
             ..self
         }
     }
 
-    pub fn with_keepalive(self, keepalive_idle_secs: u64, keepalive_interval_secs: u64) -> Self {
+    pub fn with_keepalive(self, keepalive_idle: Duration, keepalive_interval: Duration) -> Self {
         Self {
-            keepalive_idle_secs,
-            keepalive_interval_secs,
+            keepalive_idle_secs: keepalive_idle.as_secs(),
+            keepalive_interval_secs: keepalive_interval.as_secs(),
             ..self
         }
     }

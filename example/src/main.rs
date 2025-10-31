@@ -1,4 +1,4 @@
-use std::{collections::HashMap, env, fs::File};
+use std::{collections::HashMap, env, fs::File, time::Duration};
 
 use futures::executor::block_on;
 use mysql_binlog_connector_rust::{
@@ -32,11 +32,14 @@ async fn dump_and_parse() {
     } else {
         StartPosition::Latest
     };
-    let mut client = BinlogClient::new(url.as_str(), server_id, start_position)
-        .with_master_heartbeat(5)
-        .with_keepalive(60, 15);
 
-    let mut stream = client.connect().await.unwrap();
+    let mut stream = BinlogClient::new(url.as_str(), server_id, start_position)
+        .with_master_heartbeat(Duration::from_secs(5))
+        .with_read_timeout(Duration::from_secs(60))
+        .with_keepalive(Duration::from_secs(60), Duration::from_secs(10))
+        .connect()
+        .await
+        .unwrap();
 
     loop {
         let (header, data) = stream.read().await.unwrap();

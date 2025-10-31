@@ -84,7 +84,7 @@ impl PacketChannel {
 
             socket_ref
                 .set_tcp_keepalive(&keepalive)
-                .map_err(|e| BinlogError::IoError(e))?;
+                .map_err(BinlogError::IoError)?;
         }
 
         #[cfg(windows)]

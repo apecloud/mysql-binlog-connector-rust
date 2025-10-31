@@ -94,7 +94,7 @@ impl CommandUtil {
         let mut command = QueryCommand {
             sql: format!(
                 "set @master_heartbeat_period={}",
-                heartbeat_interval_secs * 1000_000_000
+                heartbeat_interval_secs * 1_000_000_000
             ),
         };
         channel.write(&command.to_bytes()?, 0).await?;
