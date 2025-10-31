@@ -1,11 +1,14 @@
+#[cfg(unix)]
+use std::os::unix::io::AsRawFd;
+#[cfg(windows)]
+use std::os::windows::io::AsRawSocket;
+
 use std::{
     io::{Cursor, Write},
     time::Duration,
 };
 
-use async_std::prelude::*;
-use async_std::{future::timeout, net::TcpStream};
-
+use async_std::{future::timeout, net::TcpStream, prelude::*};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use log::{trace, warn};
 
@@ -18,8 +21,18 @@ pub struct PacketChannel {
     timeout_secs: u64,
 }
 
+pub struct KeepAliveConfig {
+    pub keepidle_secs: u64,
+    pub keepintvl_secs: u64,
+}
+
 impl PacketChannel {
-    pub async fn new(ip: &str, port: &str, timeout_secs: u64) -> Result<Self, BinlogError> {
+    pub async fn new(
+        ip: &str,
+        port: &str,
+        timeout_secs: u64,
+        keepalive_config: &Option<KeepAliveConfig>,
+    ) -> Result<Self, BinlogError> {
         let addr = format!("{}:{}", ip, port);
         let stream =
             match timeout(Duration::from_secs(timeout_secs), TcpStream::connect(&addr)).await {
@@ -32,10 +45,67 @@ impl PacketChannel {
                     )))
                 }
             };
+
+        if let Some(config) = keepalive_config {
+            Self::configure_keepalive(&stream, config)?;
+        }
+
         Ok(Self {
             stream,
             timeout_secs,
         })
+    }
+
+    /// Configure TCP keepalive settings for the stream
+    /// This is safe because:
+    /// 1. We only borrow the stream temporarily
+    /// 2. set_tcp_keepalive is a fast syscall (setsockopt) that doesn't block
+    /// 3. Keepalive is handled by the kernel, doesn't affect async operations
+    fn configure_keepalive(
+        stream: &TcpStream,
+        config: &KeepAliveConfig,
+    ) -> Result<(), BinlogError> {
+        if config.keepidle_secs == 0 || config.keepintvl_secs == 0 {
+            return Ok(());
+        }
+
+        #[cfg(unix)]
+        {
+            use socket2::{SockRef, TcpKeepalive};
+            use std::os::unix::io::BorrowedFd;
+
+            let raw_fd = stream.as_raw_fd();
+            let borrowed_fd = unsafe { BorrowedFd::borrow_raw(raw_fd) };
+            let socket_ref = SockRef::from(&borrowed_fd);
+
+            let keepalive = TcpKeepalive::new()
+                .with_time(Duration::from_secs(config.keepidle_secs))
+                .with_interval(Duration::from_secs(config.keepintvl_secs));
+
+            socket_ref
+                .set_tcp_keepalive(&keepalive)
+                .map_err(|e| BinlogError::IoError(e))?;
+        }
+
+        #[cfg(windows)]
+        {
+            use socket2::{SockRef, TcpKeepalive};
+            use std::os::windows::io::BorrowedSocket;
+
+            let raw_socket = stream.as_raw_socket();
+            let borrowed_socket = unsafe { BorrowedSocket::borrow_raw(raw_socket) };
+            let socket_ref = SockRef::from(&borrowed_socket);
+
+            let keepalive = TcpKeepalive::new()
+                .with_time(Duration::from_secs(config.keepidle_secs))
+                .with_interval(Duration::from_secs(config.keepintvl_secs));
+
+            socket_ref
+                .set_tcp_keepalive(&keepalive)
+                .map_err(|e| BinlogError::IoError(e))?;
+        }
+
+        Ok(())
     }
 
     pub async fn close(&self) -> Result<(), BinlogError> {
@@ -54,8 +124,21 @@ impl PacketChannel {
 
     async fn read_packet_info(&mut self) -> Result<(usize, u8), BinlogError> {
         let mut buf = vec![0u8; 4];
-        // do not call self.read_exact since blocked by receiving no data is expected if there are no new binlog events
-        self.stream.read_exact(&mut buf).await?;
+        match timeout(
+            Duration::from_secs(self.timeout_secs),
+            self.stream.read_exact(&mut buf),
+        )
+        .await
+        {
+            Ok(Ok(_)) => {}
+            Ok(Err(e)) => return Err(BinlogError::from(e)),
+            Err(_) => {
+                return Err(BinlogError::UnexpectedData(format!(
+                    "Read binlog header timeout after {}s while waiting for packet header",
+                    self.timeout_secs
+                )));
+            }
+        }
         let mut rdr = Cursor::new(buf);
         let length = rdr.read_u24::<LittleEndian>()? as usize;
         let sequence = rdr.read_u8()?;
