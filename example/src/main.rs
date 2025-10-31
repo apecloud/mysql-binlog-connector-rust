@@ -1,8 +1,8 @@
-use std::{collections::HashMap, env, fs::File};
+use std::{collections::HashMap, env, fs::File, time::Duration};
 
 use futures::executor::block_on;
 use mysql_binlog_connector_rust::{
-    binlog_client::BinlogClient,
+    binlog_client::{BinlogClient, StartPosition},
     binlog_parser::BinlogParser,
     column::{column_value::ColumnValue, json::json_binary::JsonBinary},
     event::{event_data::EventData, row_event::RowEvent},
@@ -23,21 +23,23 @@ async fn dump_and_parse() {
     let server_id: u64 = env::var("server_id").unwrap().parse().unwrap();
     let binlog_filename = env::var("binlog_filename").unwrap();
     let binlog_position: u32 = env::var("binlog_position").unwrap().parse().unwrap();
-    let gtid_enabled: bool = env::var("gtid_enabled").unwrap().parse().unwrap();
     let gtid_set = env::var("gtid_set").unwrap();
 
-    let mut client = BinlogClient {
-        url,
-        binlog_filename,
-        binlog_position,
-        server_id,
-        gtid_enabled,
-        gtid_set,
-        heartbeat_interval_secs: 5,
-        timeout_secs: 60,
+    let start_position = if !gtid_set.is_empty() {
+        StartPosition::Gtid(gtid_set)
+    } else if !binlog_filename.is_empty() {
+        StartPosition::BinlogPosition(binlog_filename, binlog_position)
+    } else {
+        StartPosition::Latest
     };
 
-    let mut stream = client.connect().await.unwrap();
+    let mut stream = BinlogClient::new(url.as_str(), server_id, start_position)
+        .with_master_heartbeat(Duration::from_secs(5))
+        .with_read_timeout(Duration::from_secs(60))
+        .with_keepalive(Duration::from_secs(60), Duration::from_secs(10))
+        .connect()
+        .await
+        .unwrap();
 
     loop {
         let (header, data) = stream.read().await.unwrap();

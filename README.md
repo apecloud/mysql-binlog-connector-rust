@@ -3,18 +3,22 @@ English | [中文](README_ZH.md)
 # mysql-binlog-connector-rust
 
 ## Overview
+
 - A simple but strong lib to dump mysql binlog (binlog_format=ROW) and parse Row Based Replication Events in RUST with async IO.
 
 ### Supported mysql versions
+
 - mysql 5.6 (tested in mysql:5.6.51)
 - mysql 5.7 (tested in mysql:5.7.40)
 - mysql 8.0 (tested in mysql:8.0.31)
 
 ### Supported replication type
+
 - binlog-file-position-based replication
 - gtid-based replication
 
 ### Supported event types
+
 - FORMAT_DESCRIPTION_EVENT
 - ROTATE_EVENT
 - PREVIOUS_GTIDS_LOG_EVENT
@@ -35,40 +39,43 @@ English | [中文](README_ZH.md)
 - for more details, refer to: [mysql doc](https://dev.mysql.com/doc/dev/mysql-server/latest/page_protocol_replication_binlog_event.html)
 
 ### Mapping between mysql columns and rust types
-| mysql column type | binlog column type(raw) | binlog column type(parsed from binlog column meta) | rust type       |
-| :---------------- | :---------------------- | :------------------------------------------------- | :---------      |
-| BIT | MYSQL_TYPE_BIT = 16 | ColumnType::Bit | ColumnValue::Bit(u64) |
-| TINYINT [UNSIGNED] | MYSQL_TYPE_TINY = 1 | ColumnType::Tiny | ColumnValue::Tiny(i8) |
-| SMALLINT [UNSIGNED] | MYSQL_TYPE_SHORT = 2 | ColumnType::Short | ColumnValue::Short(i16) |
-| MEDIUMINT [UNSIGNED] | MYSQL_TYPE_INT24 = 9 | ColumnType::Int24 | ColumnValue::Long(i32) |
-| INT [UNSIGNED] | MYSQL_TYPE_LONG = 3 | ColumnType::Long | ColumnValue::Long(i32) |
-| BIGINT [UNSIGNED] | MYSQL_TYPE_LONGLONG = 8 | ColumnType::LongLong | ColumnValue::LongLong(i64) |
-| FLOAT | MYSQL_TYPE_FLOAT = 4 | ColumnType::Float | ColumnValue::Float(f32) |
-| DOUBLE | MYSQL_TYPE_DOUBLE = 5 | ColumnType::Double | ColumnValue::Double(f64) |
-| DECIMAL | MYSQL_TYPE_NEWDECIMAL = 246 | ColumnType::NewDecimal | ColumnValue::Decimal(String) |
-| DATE | MYSQL_TYPE_DATE = 10 | ColumnType::Date | ColumnValue::Date(String) |
-| TIME | MYSQL_TYPE_TIME2 = 19 | ColumnType::Time2 | ColumnValue::Time(String) |
-| TIMESTAMP | MYSQL_TYPE_TIMESTAMP2 = 17 | ColumnType::TimeStamp2 | ColumnValue::Timestamp(i64) |
-| DATETIME | MYSQL_TYPE_DATETIME2 = 18 | ColumnType::DateTime2 | ColumnValue::DateTime(String) |
-| YEAR | MYSQL_TYPE_YEAR = 13 | ColumnType::Year | ColumnValue::Year(u16) |
-| CHAR | MYSQL_TYPE_STRING = 254 | ColumnType::String | ColumnValue::String(Vec&lt;u8&gt;) |
-| VARCHAR | MYSQL_TYPE_VARCHAR = 15 | ColumnType::VarChar | ColumnValue::String(Vec&lt;u8&gt;) |
-| BINARY | MYSQL_TYPE_STRING = 254 | ColumnType::String | ColumnValue::String(Vec&lt;u8&gt;) |
-| VARBINARY | MYSQL_TYPE_VARCHAR = 15 | ColumnType::VarChar | ColumnValue::String(Vec&lt;u8&gt;) |
-| ENUM | MYSQL_TYPE_STRING = 254 | ColumnType::Enum | ColumnValue::Enum(u32) |
-| SET | MYSQL_TYPE_STRING = 254 | ColumnType::Set | ColumnValue::Set(u64) |
-| TINYTEXT TEXT MEDIUMTEXT LONGTEXT TINYBLOB BLOB MEDIUMBLOB LONGBLOB | MYSQL_TYPE_BLOB = 252 | ColumnType::Blob | ColumnValue::Blob(Vec&lt;u8&gt;) |
-| GEOMETRY | MYSQL_TYPE_GEOMETRY = 255 | ColumnType::Geometry | ColumnValue::Blob(Vec&lt;u8&gt;) |
-| JSON | MYSQL_TYPE_JSON = 245 | ColumnType::Json | ColumnValue::Json(Vec&lt;u8&gt;) |
+
+| mysql column type                                                   | binlog column type(raw)     | binlog column type(parsed from binlog column meta) | rust type                          |
+| :------------------------------------------------------------------ | :-------------------------- | :------------------------------------------------- | :--------------------------------- |
+| BIT                                                                 | MYSQL_TYPE_BIT = 16         | ColumnType::Bit                                    | ColumnValue::Bit(u64)              |
+| TINYINT [UNSIGNED]                                                  | MYSQL_TYPE_TINY = 1         | ColumnType::Tiny                                   | ColumnValue::Tiny(i8)              |
+| SMALLINT [UNSIGNED]                                                 | MYSQL_TYPE_SHORT = 2        | ColumnType::Short                                  | ColumnValue::Short(i16)            |
+| MEDIUMINT [UNSIGNED]                                                | MYSQL_TYPE_INT24 = 9        | ColumnType::Int24                                  | ColumnValue::Long(i32)             |
+| INT [UNSIGNED]                                                      | MYSQL_TYPE_LONG = 3         | ColumnType::Long                                   | ColumnValue::Long(i32)             |
+| BIGINT [UNSIGNED]                                                   | MYSQL_TYPE_LONGLONG = 8     | ColumnType::LongLong                               | ColumnValue::LongLong(i64)         |
+| FLOAT                                                               | MYSQL_TYPE_FLOAT = 4        | ColumnType::Float                                  | ColumnValue::Float(f32)            |
+| DOUBLE                                                              | MYSQL_TYPE_DOUBLE = 5       | ColumnType::Double                                 | ColumnValue::Double(f64)           |
+| DECIMAL                                                             | MYSQL_TYPE_NEWDECIMAL = 246 | ColumnType::NewDecimal                             | ColumnValue::Decimal(String)       |
+| DATE                                                                | MYSQL_TYPE_DATE = 10        | ColumnType::Date                                   | ColumnValue::Date(String)          |
+| TIME                                                                | MYSQL_TYPE_TIME2 = 19       | ColumnType::Time2                                  | ColumnValue::Time(String)          |
+| TIMESTAMP                                                           | MYSQL_TYPE_TIMESTAMP2 = 17  | ColumnType::TimeStamp2                             | ColumnValue::Timestamp(i64)        |
+| DATETIME                                                            | MYSQL_TYPE_DATETIME2 = 18   | ColumnType::DateTime2                              | ColumnValue::DateTime(String)      |
+| YEAR                                                                | MYSQL_TYPE_YEAR = 13        | ColumnType::Year                                   | ColumnValue::Year(u16)             |
+| CHAR                                                                | MYSQL_TYPE_STRING = 254     | ColumnType::String                                 | ColumnValue::String(Vec&lt;u8&gt;) |
+| VARCHAR                                                             | MYSQL_TYPE_VARCHAR = 15     | ColumnType::VarChar                                | ColumnValue::String(Vec&lt;u8&gt;) |
+| BINARY                                                              | MYSQL_TYPE_STRING = 254     | ColumnType::String                                 | ColumnValue::String(Vec&lt;u8&gt;) |
+| VARBINARY                                                           | MYSQL_TYPE_VARCHAR = 15     | ColumnType::VarChar                                | ColumnValue::String(Vec&lt;u8&gt;) |
+| ENUM                                                                | MYSQL_TYPE_STRING = 254     | ColumnType::Enum                                   | ColumnValue::Enum(u32)             |
+| SET                                                                 | MYSQL_TYPE_STRING = 254     | ColumnType::Set                                    | ColumnValue::Set(u64)              |
+| TINYTEXT TEXT MEDIUMTEXT LONGTEXT TINYBLOB BLOB MEDIUMBLOB LONGBLOB | MYSQL_TYPE_BLOB = 252       | ColumnType::Blob                                   | ColumnValue::Blob(Vec&lt;u8&gt;)   |
+| GEOMETRY                                                            | MYSQL_TYPE_GEOMETRY = 255   | ColumnType::Geometry                               | ColumnValue::Blob(Vec&lt;u8&gt;)   |
+| JSON                                                                | MYSQL_TYPE_JSON = 245       | ColumnType::Json                                   | ColumnValue::Json(Vec&lt;u8&gt;)   |
 
 - for CHAR / VARCHAR columns, since binlog contains no charset information, we just get raw bytes and store them in ColumnValue::String(Vec&lt;u8&gt;) objects, you may need to convert them into strings based on column metadatas for further usage.
 - for UNSIGNED numeric columns, since binlog contains no unsigned flags, we just parse them as signed numerics, you may need to convert them into unsigned values based on column metadatas for further usage.
 - for JSON columns, we get raw bytes and store them in ColumnValue::Json(Vec&lt;u8&gt;) objects, we also provide a default deserializer "JsonBinary" to parse them into strings, find example later in this doc.
 
 ## Quick start
+
 ### Run tests
+
 - start a mysql, enable binlog without binlog-transaction-compression
-:
+
 ```
 docker run -d --name mysql57 \
 --platform linux/x86_64 \
@@ -86,10 +93,11 @@ mysql:5.7.40 \
 --max_binlog_size=100M \
 --gtid_mode=ON \
 --enforce_gtid_consistency=ON \
---binlog_format=ROW 
+--binlog_format=ROW
 ```
 
 - start a mysql, enable binlog with binlog-transaction-compression
+
 ```
 docker run -d --name mysql80 \
 --platform linux/x86_64 \
@@ -114,6 +122,7 @@ docker run -d --name mysql80 \
 ```
 
 - update configs in tests/.env
+
 ```
 db_url=mysql://root:123456@127.0.0.1:3307
 server_id=200
@@ -123,9 +132,11 @@ binlog_parse_millis=100
 ```
 
 - run tests
+
 ```
 cargo test --package mysql-binlog-connector-rust --test integration_test
 ```
+
 - each test will:
 - &nbsp; execute sqls to create tables and generate binlogs
 - &nbsp; dump and parse binlogs
@@ -133,6 +144,7 @@ cargo test --package mysql-binlog-connector-rust --test integration_test
 - you may increase binlog_parse_millis for big transactions
 
 ## Examples
+
 ```rust
 fn main() {
     block_on(dump_and_parse())
@@ -145,17 +157,32 @@ async fn dump_and_parse() {
     let server_id: u64 = env::var("server_id").unwrap().parse().unwrap();
     let binlog_filename = env::var("binlog_filename").unwrap();
     let binlog_position: u32 = env::var("binlog_position").unwrap().parse().unwrap();
-    let gtid_enabled: bool = env::var("gtid_enabled").unwrap().parse().unwrap();
     let gtid_set = env::var("gtid_set").unwrap();
 
-    let mut client = BinlogClient {
-        url,
-        binlog_filename,
-        binlog_position,
-        server_id,
-        gtid_enabled,
-        gtid_set,
+    let start_position = if !gtid_set.is_empty() {
+        StartPosition::Gtid(gtid_set)
+    } else if !binlog_filename.is_empty() {
+        StartPosition::BinlogPosition(binlog_filename, binlog_position)
+    } else {
+        StartPosition::Latest
     };
+
+    let mut stream = BinlogClient::new(url.as_str(), server_id, start_position)
+        /// Heartbeat interval in seconds
+        /// Server will send a heartbeat event if no binlog events are received within this interval
+        /// If heartbeat_interval_secs=0, server won't send heartbeat events
+        /// default is 0 means not enabled
+        .with_master_heartbeat(Duration::from_secs(5))
+        /// Network operation timeout in seconds
+        /// Maximum wait time for operations like connection establishment and data reading
+        /// default is 60 secs
+        .with_read_timeout(Duration::from_secs(60))
+        /// TCP keepalive idle time and keepalive interval time
+        /// default is (0 secs, 0 secs) means keepalive not enabled
+        .with_keepalive(Duration::from_secs(60), Duration::from_secs(10))
+        .connect()
+        .await
+        .unwrap();
 
     let mut stream = client.connect().await.unwrap();
 
@@ -169,11 +196,13 @@ async fn dump_and_parse() {
 ```
 
 ### Example 1: parse binlogs with binlog-transaction-compression disabled
+
 - execute sqls
+
 ```sql
 flush logs;
 
-SET autocommit=0; 
+SET autocommit=0;
 CREATE DATABASE test_db;
 USE test_db;
 CREATE TABLE test_tb(id INT, value INT);
@@ -186,6 +215,7 @@ commit;
 ```
 
 - show binlog events
+
 ```sql
 mysql> show binary logs;
 +------------------+-----------+
@@ -218,6 +248,7 @@ mysql> show binlog events in 'mysql-bin.000050';
 ```
 
 - binlogs parsed
+
 ```
 header: EventHeader { timestamp: 0, event_type: 4, server_id: 1, event_length: 47, next_event_position: 0, event_flags: 32 }
 data: Rotate(RotateEvent { binlog_filename: "mysql-bin.000050", binlog_position: 194 })
@@ -272,11 +303,13 @@ data: Query(QueryEvent { thread_id: 493, exec_time: 0, error_code: 0, schema: "t
 ```
 
 ### Example 2: parse binlogs with binlog-transaction-compression enabled
+
 - execute sqls
+
 ```sql
 flush logs;
 
-SET autocommit=0; 
+SET autocommit=0;
 CREATE DATABASE test_db;
 USE test_db;
 CREATE TABLE test_tb(id INT, value INT);
@@ -289,6 +322,7 @@ commit;
 ```
 
 - show binlog events
+
 ```sql
 mysql> show binary logs;
 +------------------+-----------+-----------+
@@ -327,6 +361,7 @@ mysql> show binlog events in 'mysql-bin.000033';
 ```
 
 - binlogs parsed
+
 ```
 header: EventHeader { timestamp: 1704445709, event_type: 15, server_id: 1, event_length: 122, next_event_position: 126, event_flags: 0 }
 data: FormatDescription(FormatDescriptionEvent { binlog_version: 4, server_version: "8.0.31\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", create_timestamp: 0, header_length: 19, checksum_type: CRC32 })
@@ -366,6 +401,7 @@ data: Query(QueryEvent { thread_id: 8, exec_time: 0, error_code: 0, schema: "tes
 ```
 
 ### Example 3: parse json column to string
+
 ```rust
 fn parse_json_columns(data: EventData) {
     let parse_row = |row: RowEvent| {
@@ -402,6 +438,7 @@ fn parse_json_columns(data: EventData) {
 ```
 
 - execute sqls
+
 ```sql
 
 CREATE TABLE test_db_1.json_test(id INT AUTO_INCREMENT, json_col JSON, PRIMARY KEY(id));
@@ -413,6 +450,7 @@ commit;
 ```
 
 - parsed json column values:
+
 ```
 json column: {"k.0":0,"k.1":1,"k.-1":-1,"k.[]":[],"k.{}":{},"k.3.14":3.14,"k.null":null,"k.true":true,"k.32767":32767,"k.32768":32768,"k.false":false,"k.-32768":-32768,"k.-32769":-32769,"k.string":"string","k.2147483647":2147483647,"k.2147483648":2147483648,"k.true_false":[true,false],"k.-2147483648":-2147483648,"k.-2147483649":-2147483649,"k.18446744073709551615":18446744073709551615,"k.18446744073709551616":18446744073709552000}
 
@@ -420,6 +458,7 @@ json column: {"中文":"😀"}
 ```
 
 ### Example 4: parse binlog file
+
 ```rust
 async fn parse_file() {
     let file_path = "path-to-binlog-file";

@@ -10,7 +10,7 @@ use crate::{
 use super::{default_charset::DefaultCharset, metadata_type::MetadataType};
 
 /// Contains metadata for a single table column.
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, Default)]
 pub struct ColumnMetadata {
     /// Column name.
     pub column_name: Option<String>,
@@ -57,23 +57,6 @@ pub struct TableMetadata {
     pub columns: Vec<ColumnMetadata>,
 }
 
-impl ColumnMetadata {
-    pub fn new() -> Self {
-        Self {
-            column_name: None,
-            is_signed: None,
-            charset_collation: None,
-            enum_string_values: None,
-            set_string_values: None,
-            geometry_type: None,
-            is_simple_primary_key: None,
-            primary_key_prefix: None,
-            enum_and_set_charset_collation: None,
-            is_visible: None,
-        }
-    }
-}
-
 impl TableMetadata {
     pub fn parse(
         cursor: &mut Cursor<&Vec<u8>>,
@@ -82,7 +65,7 @@ impl TableMetadata {
     ) -> Result<Self, BinlogError> {
         // Initialize columns with default values
         let mut columns: Vec<ColumnMetadata> = (0..column_types.len())
-            .map(|_| ColumnMetadata::new())
+            .map(|_| ColumnMetadata::default())
             .collect();
 
         let mut default_charset = None;
@@ -204,11 +187,9 @@ fn apply_signedness_to_columns(
     let mut signedness_index = 0;
     for (i, &column_type_code) in column_types.iter().enumerate() {
         let column_type = ColumnType::from_code(column_type_code);
-        if is_numeric_type(column_type) {
-            if signedness_index < signedness_values.len() {
-                columns[i].is_signed = Some(signedness_values[signedness_index]);
-                signedness_index += 1;
-            }
+        if is_numeric_type(column_type) && signedness_index < signedness_values.len() {
+            columns[i].is_signed = Some(signedness_values[signedness_index]);
+            signedness_index += 1;
         }
     }
 }
@@ -643,7 +624,7 @@ mod tests {
 
     #[test]
     fn test_column_metadata_creation() {
-        let column = ColumnMetadata::new();
+        let column = ColumnMetadata::default();
         assert_eq!(column.column_name, None);
         assert_eq!(column.is_signed, None);
         assert_eq!(column.charset_collation, None);
