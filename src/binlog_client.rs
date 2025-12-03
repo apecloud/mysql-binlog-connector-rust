@@ -8,6 +8,7 @@ use crate::{
     network::packet_channel::KeepAliveConfig,
 };
 
+#[derive(Debug, Clone)]
 pub enum StartPosition {
     BinlogPosition(String, u32),
     Gtid(String),
