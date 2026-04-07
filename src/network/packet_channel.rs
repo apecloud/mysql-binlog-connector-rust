@@ -172,12 +172,7 @@ impl PacketChannel {
 
     async fn read_exact(&mut self, length: usize) -> Result<Vec<u8>, BinlogError> {
         let mut buf = vec![0u8; length];
-        // keep reading data until the complete packet is received
-        // MySQL protocol packets may require multiple reads for complete reception
-        let wait_data_millis = 10;
-        let max_zero_reads = self.timeout_secs * 1000 / wait_data_millis;
         let mut read_count = 0;
-        let mut zero_reads = 0;
 
         while read_count < length {
             match timeout(
@@ -188,21 +183,16 @@ impl PacketChannel {
             {
                 Ok(Ok(n)) => {
                     if n == 0 {
-                        zero_reads += 1;
-                        if zero_reads >= max_zero_reads {
-                            return Err(BinlogError::UnexpectedData(format!(
-                                "Too many zero-length reads. Expected data length: {}, read so far: {}",
+                        // read() returning 0 means the peer has closed the connection (TCP FIN).
+                        // This is an unrecoverable EOF — retrying will never yield new data.
+                        return Err(BinlogError::IoError(std::io::Error::new(
+                            std::io::ErrorKind::UnexpectedEof,
+                            format!(
+                                "Connection closed by peer. Expected data length: {}, read so far: {}",
                                 length, read_count
-                            )));
-                        }
-                        warn!(
-                            "Stream reading binlog returns zero-length data, Expected data length: {}, read so far: {}",
-                            length, read_count
-                        );
-                        async_std::task::sleep(Duration::from_millis(wait_data_millis)).await;
-                        continue;
+                            ),
+                        )));
                     }
-                    zero_reads = 0;
                     read_count += n;
                     trace!(
                         "Stream reading binlog data, Expected data length: {}, read so far: {}",
