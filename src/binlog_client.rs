@@ -4,7 +4,10 @@ use crate::{
     binlog_error::BinlogError,
     binlog_parser::BinlogParser,
     binlog_stream::BinlogStream,
-    command::{authenticator::Authenticator, command_util::CommandUtil},
+    command::{
+        authenticator::Authenticator,
+        command_util::{CommandUtil, DumpBinlogOptions},
+    },
     network::packet_channel::KeepAliveConfig,
 };
 use async_std::task::sleep;
@@ -74,6 +77,14 @@ pub struct BinlogClient {
 
 const MIN_BINLOG_POSITION: u32 = 4;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ResolvedStartPosition {
+    gtid_enabled: bool,
+    gtid_set: String,
+    binlog_filename: String,
+    binlog_position: u32,
+}
+
 impl BinlogClient {
     pub fn new(url: &str, server_id: u64, position: StartPosition) -> Self {
         let mut client = Self {
@@ -128,25 +139,7 @@ impl BinlogClient {
         let mut authenticator =
             Authenticator::new(&self.url, timeout_secs, self.build_keepalive_config())?;
         let mut channel = authenticator.connect().await?;
-
-        if self.gtid_enabled {
-            if self.gtid_set.is_empty() {
-                let (_, _, gtid_set) = CommandUtil::fetch_binlog_info(&mut channel).await?;
-                self.gtid_set = gtid_set;
-            }
-        } else {
-            // fetch binlog info
-            if self.binlog_filename.is_empty() {
-                let (binlog_filename, binlog_position, _) =
-                    CommandUtil::fetch_binlog_info(&mut channel).await?;
-                self.binlog_filename = binlog_filename;
-                self.binlog_position = binlog_position;
-            }
-
-            if self.binlog_position < MIN_BINLOG_POSITION {
-                self.binlog_position = MIN_BINLOG_POSITION;
-            }
-        }
+        let resolved_start = self.resolve_start_position(&mut channel).await?;
 
         // fetch binlog checksum
         let binlog_checksum = CommandUtil::fetch_binlog_checksum(&mut channel).await?;
@@ -159,7 +152,19 @@ impl BinlogClient {
         }
 
         // dump binlog
-        CommandUtil::dump_binlog(&mut channel, self).await?;
+        CommandUtil::dump_binlog(
+            &mut channel,
+            DumpBinlogOptions {
+                server_id: self.server_id,
+                gtid_enabled: resolved_start.gtid_enabled,
+                gtid_set: &resolved_start.gtid_set,
+                binlog_filename: &resolved_start.binlog_filename,
+                binlog_position: resolved_start.binlog_position,
+            },
+        )
+        .await?;
+
+        self.apply_resolved_start_position(&resolved_start);
 
         // list for binlog
         let parser = BinlogParser {
@@ -212,11 +217,54 @@ impl BinlogClient {
             .saturating_mul(multiplier);
         base.min(self.retry_config.max_backoff_ms.max(1))
     }
+
+    async fn resolve_start_position(
+        &self,
+        channel: &mut crate::network::packet_channel::PacketChannel,
+    ) -> Result<ResolvedStartPosition, BinlogError> {
+        if self.gtid_enabled {
+            let gtid_set = if self.gtid_set.is_empty() {
+                let (_, _, gtid_set) = CommandUtil::fetch_binlog_info(channel).await?;
+                gtid_set
+            } else {
+                self.gtid_set.clone()
+            };
+
+            return Ok(ResolvedStartPosition {
+                gtid_enabled: true,
+                gtid_set,
+                binlog_filename: String::new(),
+                binlog_position: 0,
+            });
+        }
+
+        let (binlog_filename, binlog_position) = if self.binlog_filename.is_empty() {
+            let (binlog_filename, binlog_position, _) =
+                CommandUtil::fetch_binlog_info(channel).await?;
+            (binlog_filename, binlog_position)
+        } else {
+            (self.binlog_filename.clone(), self.binlog_position)
+        };
+
+        Ok(ResolvedStartPosition {
+            gtid_enabled: false,
+            gtid_set: String::new(),
+            binlog_filename,
+            binlog_position: binlog_position.max(MIN_BINLOG_POSITION),
+        })
+    }
+
+    fn apply_resolved_start_position(&mut self, resolved_start: &ResolvedStartPosition) {
+        self.gtid_enabled = resolved_start.gtid_enabled;
+        self.gtid_set = resolved_start.gtid_set.clone();
+        self.binlog_filename = resolved_start.binlog_filename.clone();
+        self.binlog_position = resolved_start.binlog_position;
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{BinlogClient, RetryConfig};
+    use super::{BinlogClient, ResolvedStartPosition, RetryConfig, StartPosition};
 
     #[test]
     fn compute_backoff_caps_at_max() {
@@ -232,5 +280,34 @@ mod tests {
         assert_eq!(client.compute_backoff_ms(1), 100);
         assert_eq!(client.compute_backoff_ms(2), 200);
         assert_eq!(client.compute_backoff_ms(8), 1_000);
+    }
+
+    #[test]
+    fn apply_resolved_start_position_updates_client_after_success() {
+        let mut client =
+            BinlogClient::new("mysql://root:root@127.0.0.1:3306", 1, StartPosition::Latest);
+        let resolved = ResolvedStartPosition {
+            gtid_enabled: false,
+            gtid_set: String::new(),
+            binlog_filename: "mysql-bin.000123".to_string(),
+            binlog_position: 456,
+        };
+
+        client.apply_resolved_start_position(&resolved);
+
+        assert!(!client.gtid_enabled);
+        assert_eq!(client.binlog_filename, "mysql-bin.000123");
+        assert_eq!(client.binlog_position, 456);
+    }
+
+    #[test]
+    fn applying_resolved_position_is_explicit_not_implicit() {
+        let client =
+            BinlogClient::new("mysql://root:root@127.0.0.1:3306", 1, StartPosition::Latest);
+
+        assert!(!client.gtid_enabled);
+        assert!(client.gtid_set.is_empty());
+        assert!(client.binlog_filename.is_empty());
+        assert_eq!(client.binlog_position, 0);
     }
 }

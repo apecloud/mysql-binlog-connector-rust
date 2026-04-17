@@ -1,5 +1,4 @@
 use crate::{
-    binlog_client::BinlogClient,
     binlog_error::BinlogError,
     constants::MysqlRespCode,
     event::checksum_type::ChecksumType,
@@ -15,6 +14,14 @@ use super::{
 };
 
 pub struct CommandUtil {}
+
+pub struct DumpBinlogOptions<'a> {
+    pub server_id: u64,
+    pub gtid_enabled: bool,
+    pub gtid_set: &'a str,
+    pub binlog_filename: &'a str,
+    pub binlog_position: u32,
+}
 
 impl CommandUtil {
     pub async fn execute_query(
@@ -104,19 +111,19 @@ impl CommandUtil {
 
     pub async fn dump_binlog(
         channel: &mut PacketChannel,
-        client: &BinlogClient,
+        options: DumpBinlogOptions<'_>,
     ) -> Result<(), BinlogError> {
-        let buf = if client.gtid_enabled {
+        let buf = if options.gtid_enabled {
             let mut command = DumpBinlogGtidCommand {
-                server_id: client.server_id,
-                gtid_set: GtidSet::new(&client.gtid_set)?,
+                server_id: options.server_id,
+                gtid_set: GtidSet::new(options.gtid_set)?,
             };
             command.to_bytes()?
         } else {
             let mut command = DumpBinlogCommand {
-                binlog_filename: client.binlog_filename.clone(),
-                binlog_position: client.binlog_position,
-                server_id: client.server_id,
+                binlog_filename: options.binlog_filename.to_string(),
+                binlog_position: options.binlog_position,
+                server_id: options.server_id,
             };
             command.to_bytes()?
         };
