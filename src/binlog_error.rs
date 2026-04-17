@@ -86,13 +86,9 @@ mod tests {
 
     #[test]
     fn retryable_network_error_detection_accepts_structured_network_errors() {
-        assert!(
-            BinlogError::network_timeout("connection timed out").is_retryable_network_error()
-        );
-        assert!(
-            BinlogError::connection_closed("connection closed by peer")
-                .is_retryable_network_error()
-        );
+        assert!(BinlogError::network_timeout("connection timed out").is_retryable_network_error());
+        assert!(BinlogError::connection_closed("connection closed by peer")
+            .is_retryable_network_error());
     }
 
     #[test]
@@ -102,7 +98,8 @@ mod tests {
                 .is_retryable_network_error()
         );
         assert!(
-            !BinlogError::ConnectError("connect mysql failed".to_string()).is_retryable_network_error()
+            !BinlogError::ConnectError("connect mysql failed".to_string())
+                .is_retryable_network_error()
         );
     }
 }

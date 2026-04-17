@@ -1,9 +1,3 @@
-[workspace]
-members = [
-    ".",
-    "./example",
-]
-
 [package]
 edition = "2021"
 name = "mysql-binlog-connector-rust"
