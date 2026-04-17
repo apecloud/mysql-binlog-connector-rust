@@ -7,12 +7,31 @@ use crate::{
     command::{authenticator::Authenticator, command_util::CommandUtil},
     network::packet_channel::KeepAliveConfig,
 };
+use async_std::task::sleep;
+use log::warn;
 
 #[derive(Debug, Clone)]
 pub enum StartPosition {
     BinlogPosition(String, u32),
     Gtid(String),
     Latest,
+}
+
+#[derive(Debug, Clone)]
+pub struct RetryConfig {
+    pub initial_backoff_ms: u64,
+    pub max_backoff_ms: u64,
+    pub max_attempts: Option<usize>,
+}
+
+impl Default for RetryConfig {
+    fn default() -> Self {
+        Self {
+            initial_backoff_ms: 1_000,
+            max_backoff_ms: 30_000,
+            max_attempts: Some(1),
+        }
+    }
 }
 
 #[derive(Default)]
@@ -49,6 +68,8 @@ pub struct BinlogClient {
     /// The time period between keepalive packets if the connection is still active
     /// If keepalive_interval_secs=0, TCP keepalive will not be enabled
     pub keepalive_interval_secs: u64,
+    /// Retry policy for building a binlog session, including TCP connect/auth/setup/dump phases.
+    pub retry_config: RetryConfig,
 }
 
 const MIN_BINLOG_POSITION: u32 = 4;
@@ -149,6 +170,28 @@ impl BinlogClient {
         Ok(BinlogStream { channel, parser })
     }
 
+    pub async fn connect_with_retry(&mut self) -> Result<BinlogStream, BinlogError> {
+        let max_attempts = self.retry_config.max_attempts.unwrap_or(usize::MAX);
+        let mut attempt = 0usize;
+
+        loop {
+            attempt += 1;
+
+            match self.connect().await {
+                Ok(stream) => return Ok(stream),
+                Err(err) if err.is_retryable_network_error() && attempt < max_attempts => {
+                    let backoff_ms = self.compute_backoff_ms(attempt);
+                    warn!(
+                        "Binlog connect attempt {} failed with retryable error: {}. Retrying in {} ms",
+                        attempt, err, backoff_ms
+                    );
+                    sleep(Duration::from_millis(backoff_ms)).await;
+                }
+                Err(err) => return Err(err),
+            }
+        }
+    }
+
     fn build_keepalive_config(&self) -> Option<KeepAliveConfig> {
         if self.keepalive_idle_secs == 0 || self.keepalive_interval_secs == 0 {
             return None;
@@ -158,5 +201,36 @@ impl BinlogClient {
             keepidle_secs: self.keepalive_idle_secs,
             keepintvl_secs: self.keepalive_interval_secs,
         })
+    }
+
+    fn compute_backoff_ms(&self, attempt: usize) -> u64 {
+        let exp = (attempt.saturating_sub(1) as u32).min(16);
+        let multiplier = 2u64.pow(exp);
+        let base = self
+            .retry_config
+            .initial_backoff_ms
+            .saturating_mul(multiplier);
+        base.min(self.retry_config.max_backoff_ms.max(1))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{BinlogClient, RetryConfig};
+
+    #[test]
+    fn compute_backoff_caps_at_max() {
+        let client = BinlogClient {
+            retry_config: RetryConfig {
+                initial_backoff_ms: 100,
+                max_backoff_ms: 1_000,
+                max_attempts: None,
+            },
+            ..Default::default()
+        };
+
+        assert_eq!(client.compute_backoff_ms(1), 100);
+        assert_eq!(client.compute_backoff_ms(2), 200);
+        assert_eq!(client.compute_backoff_ms(8), 1_000);
     }
 }

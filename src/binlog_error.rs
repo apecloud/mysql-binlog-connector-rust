@@ -32,3 +32,78 @@ pub enum BinlogError {
     #[error("invalid gtid: {0}")]
     InvalidGtid(String),
 }
+
+impl BinlogError {
+    pub fn is_retryable_network_error(&self) -> bool {
+        match self {
+            Self::IoError(err) => matches!(
+                err.kind(),
+                std::io::ErrorKind::TimedOut
+                    | std::io::ErrorKind::WouldBlock
+                    | std::io::ErrorKind::UnexpectedEof
+                    | std::io::ErrorKind::ConnectionReset
+                    | std::io::ErrorKind::ConnectionAborted
+                    | std::io::ErrorKind::ConnectionRefused
+                    | std::io::ErrorKind::BrokenPipe
+                    | std::io::ErrorKind::NotConnected
+            ),
+            Self::UnexpectedData(message) | Self::ConnectError(message) => {
+                let message = message.to_ascii_lowercase();
+                [
+                    "timeout",
+                    "timed out",
+                    "unexpected eof",
+                    "end of file",
+                    "connection reset",
+                    "connection aborted",
+                    "connection refused",
+                    "broken pipe",
+                    "connection closed",
+                    "closed by peer",
+                    "not connected",
+                ]
+                .iter()
+                .any(|pattern| message.contains(pattern))
+            }
+            _ => false,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::BinlogError;
+    use std::io::{Error, ErrorKind};
+
+    #[test]
+    fn retryable_network_error_detection_accepts_io_disconnects() {
+        assert!(
+            BinlogError::IoError(Error::new(ErrorKind::UnexpectedEof, "eof"))
+                .is_retryable_network_error()
+        );
+        assert!(
+            BinlogError::IoError(Error::new(ErrorKind::ConnectionReset, "rst"))
+                .is_retryable_network_error()
+        );
+    }
+
+    #[test]
+    fn retryable_network_error_detection_accepts_timeout_messages() {
+        assert!(
+            BinlogError::ConnectError("connection timed out".to_string())
+                .is_retryable_network_error()
+        );
+        assert!(
+            BinlogError::UnexpectedData("connection closed by peer".to_string())
+                .is_retryable_network_error()
+        );
+    }
+
+    #[test]
+    fn retryable_network_error_detection_rejects_protocol_errors() {
+        assert!(
+            !BinlogError::UnexpectedData("bad packet header".to_string())
+                .is_retryable_network_error()
+        );
+    }
+}

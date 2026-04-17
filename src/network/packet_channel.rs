@@ -10,7 +10,7 @@ use std::{
 
 use async_std::{future::timeout, net::TcpStream, prelude::*};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use log::{trace, warn};
+use log::trace;
 
 use crate::binlog_error::BinlogError;
 
@@ -118,7 +118,21 @@ impl PacketChannel {
         wtr.write_u24::<LittleEndian>(buf.len() as u32)?;
         wtr.write_u8(sequence)?;
         Write::write(&mut wtr, buf)?;
-        self.stream.write_all(&wtr).await?;
+        match timeout(
+            Duration::from_secs(self.timeout_secs),
+            self.stream.write_all(&wtr),
+        )
+        .await
+        {
+            Ok(Ok(())) => {}
+            Ok(Err(e)) => return Err(BinlogError::from(e)),
+            Err(_) => {
+                return Err(BinlogError::UnexpectedData(format!(
+                    "Write binlog timeout after {}s while sending packet",
+                    self.timeout_secs
+                )));
+            }
+        }
         Ok(())
     }
 
