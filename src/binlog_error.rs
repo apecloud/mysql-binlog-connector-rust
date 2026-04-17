@@ -11,6 +11,12 @@ pub enum BinlogError {
     #[error("connect error: {0}")]
     ConnectError(String),
 
+    #[error("network timeout: {0}")]
+    NetworkTimeout(String),
+
+    #[error("connection closed: {0}")]
+    ConnectionClosed(String),
+
     #[error("fmt error: {0}")]
     FmtError(#[from] std::fmt::Error),
 
@@ -34,8 +40,17 @@ pub enum BinlogError {
 }
 
 impl BinlogError {
+    pub fn network_timeout(message: impl Into<String>) -> Self {
+        Self::NetworkTimeout(message.into())
+    }
+
+    pub fn connection_closed(message: impl Into<String>) -> Self {
+        Self::ConnectionClosed(message.into())
+    }
+
     pub fn is_retryable_network_error(&self) -> bool {
         match self {
+            Self::NetworkTimeout(_) | Self::ConnectionClosed(_) => true,
             Self::IoError(err) => matches!(
                 err.kind(),
                 std::io::ErrorKind::TimedOut
@@ -47,24 +62,6 @@ impl BinlogError {
                     | std::io::ErrorKind::BrokenPipe
                     | std::io::ErrorKind::NotConnected
             ),
-            Self::UnexpectedData(message) | Self::ConnectError(message) => {
-                let message = message.to_ascii_lowercase();
-                [
-                    "timeout",
-                    "timed out",
-                    "unexpected eof",
-                    "end of file",
-                    "connection reset",
-                    "connection aborted",
-                    "connection refused",
-                    "broken pipe",
-                    "connection closed",
-                    "closed by peer",
-                    "not connected",
-                ]
-                .iter()
-                .any(|pattern| message.contains(pattern))
-            }
             _ => false,
         }
     }
@@ -88,13 +85,12 @@ mod tests {
     }
 
     #[test]
-    fn retryable_network_error_detection_accepts_timeout_messages() {
+    fn retryable_network_error_detection_accepts_structured_network_errors() {
         assert!(
-            BinlogError::ConnectError("connection timed out".to_string())
-                .is_retryable_network_error()
+            BinlogError::network_timeout("connection timed out").is_retryable_network_error()
         );
         assert!(
-            BinlogError::UnexpectedData("connection closed by peer".to_string())
+            BinlogError::connection_closed("connection closed by peer")
                 .is_retryable_network_error()
         );
     }
@@ -104,6 +100,9 @@ mod tests {
         assert!(
             !BinlogError::UnexpectedData("bad packet header".to_string())
                 .is_retryable_network_error()
+        );
+        assert!(
+            !BinlogError::ConnectError("connect mysql failed".to_string()).is_retryable_network_error()
         );
     }
 }

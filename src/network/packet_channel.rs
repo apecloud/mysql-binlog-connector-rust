@@ -39,7 +39,7 @@ impl PacketChannel {
                 Ok(Ok(stream)) => stream,
                 Ok(Err(e)) => return Err(BinlogError::from(e)),
                 Err(_) => {
-                    return Err(BinlogError::ConnectError(format!(
+                    return Err(BinlogError::network_timeout(format!(
                         "Connection timeout after {} seconds while connecting to {}",
                         timeout_secs, addr
                     )))
@@ -127,7 +127,7 @@ impl PacketChannel {
             Ok(Ok(())) => {}
             Ok(Err(e)) => return Err(BinlogError::from(e)),
             Err(_) => {
-                return Err(BinlogError::UnexpectedData(format!(
+                return Err(BinlogError::network_timeout(format!(
                     "Write binlog timeout after {}s while sending packet",
                     self.timeout_secs
                 )));
@@ -147,7 +147,7 @@ impl PacketChannel {
             Ok(Ok(_)) => {}
             Ok(Err(e)) => return Err(BinlogError::from(e)),
             Err(_) => {
-                return Err(BinlogError::UnexpectedData(format!(
+                return Err(BinlogError::network_timeout(format!(
                     "Read binlog header timeout after {}s while waiting for packet header",
                     self.timeout_secs
                 )));
@@ -199,12 +199,9 @@ impl PacketChannel {
                     if n == 0 {
                         // read() returning 0 means the peer has closed the connection (TCP FIN).
                         // This is an unrecoverable EOF — retrying will never yield new data.
-                        return Err(BinlogError::IoError(std::io::Error::new(
-                            std::io::ErrorKind::UnexpectedEof,
-                            format!(
-                                "Connection closed by peer. Expected data length: {}, read so far: {}",
-                                length, read_count
-                            ),
+                        return Err(BinlogError::connection_closed(format!(
+                            "Connection closed by peer. Expected data length: {}, read so far: {}",
+                            length, read_count
                         )));
                     }
                     read_count += n;
@@ -218,7 +215,7 @@ impl PacketChannel {
                     return Err(BinlogError::from(e));
                 }
                 Err(_) => {
-                    return Err(BinlogError::UnexpectedData(format!(
+                    return Err(BinlogError::network_timeout(format!(
                         "Read binlog timeout, expect data length: {}, read so far: {}",
                         length, read_count
                     )));
