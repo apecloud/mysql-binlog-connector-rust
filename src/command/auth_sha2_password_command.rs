@@ -14,6 +14,7 @@ pub struct AuthSha2PasswordCommand {
     pub password: String,
     pub scramble: String,
     pub collation: u8,
+    pub client_capabilities: u32,
 }
 
 impl AuthSha2PasswordCommand {
@@ -25,14 +26,10 @@ impl AuthSha2PasswordCommand {
     pub fn to_bytes(&mut self) -> Result<Vec<u8>, BinlogError> {
         let mut buf = Vec::new();
 
-        let mut client_capabilities = ClientCapabilities::LONG_FLAG
-            | ClientCapabilities::PROTOCOL_41
-            | ClientCapabilities::SECURE_CONNECTION
-            | ClientCapabilities::PLUGIN_AUTH
-            | ClientCapabilities::PLUGIN_AUTH_LENENC_CLIENT_DATA;
-        if !self.schema.is_empty() {
-            client_capabilities |= ClientCapabilities::CONNECT_WITH_DB;
-        }
+        // Use the Protocol::HandshakeResponse41 secure-connection auth format.
+        // We intentionally do not advertise PLUGIN_AUTH_LENENC_CLIENT_DATA because
+        // this command writes the auth response with a 1-byte length prefix.
+        let client_capabilities = self.client_capabilities | ClientCapabilities::PLUGIN_AUTH;
         buf.write_u32::<LittleEndian>(client_capabilities)?;
 
         // maximum packet length

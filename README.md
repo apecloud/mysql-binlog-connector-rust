@@ -35,40 +35,41 @@ English | [中文](README_ZH.md)
 - UPDATE_ROWS_EVENT
 - DELETE_ROWS_EVENT_V1
 - DELETE_ROWS_EVENT
-
 - for more details, refer to: [mysql doc](https://dev.mysql.com/doc/dev/mysql-server/latest/page_protocol_replication_binlog_event.html)
 
 ### Mapping between mysql columns and rust types
 
-| mysql column type                                                   | binlog column type(raw)     | binlog column type(parsed from binlog column meta) | rust type                          |
-| :------------------------------------------------------------------ | :-------------------------- | :------------------------------------------------- | :--------------------------------- |
-| BIT                                                                 | MYSQL_TYPE_BIT = 16         | ColumnType::Bit                                    | ColumnValue::Bit(u64)              |
-| TINYINT [UNSIGNED]                                                  | MYSQL_TYPE_TINY = 1         | ColumnType::Tiny                                   | ColumnValue::Tiny(i8)              |
-| SMALLINT [UNSIGNED]                                                 | MYSQL_TYPE_SHORT = 2        | ColumnType::Short                                  | ColumnValue::Short(i16)            |
-| MEDIUMINT [UNSIGNED]                                                | MYSQL_TYPE_INT24 = 9        | ColumnType::Int24                                  | ColumnValue::Long(i32)             |
-| INT [UNSIGNED]                                                      | MYSQL_TYPE_LONG = 3         | ColumnType::Long                                   | ColumnValue::Long(i32)             |
-| BIGINT [UNSIGNED]                                                   | MYSQL_TYPE_LONGLONG = 8     | ColumnType::LongLong                               | ColumnValue::LongLong(i64)         |
-| FLOAT                                                               | MYSQL_TYPE_FLOAT = 4        | ColumnType::Float                                  | ColumnValue::Float(f32)            |
-| DOUBLE                                                              | MYSQL_TYPE_DOUBLE = 5       | ColumnType::Double                                 | ColumnValue::Double(f64)           |
-| DECIMAL                                                             | MYSQL_TYPE_NEWDECIMAL = 246 | ColumnType::NewDecimal                             | ColumnValue::Decimal(String)       |
-| DATE                                                                | MYSQL_TYPE_DATE = 10        | ColumnType::Date                                   | ColumnValue::Date(String)          |
-| TIME                                                                | MYSQL_TYPE_TIME2 = 19       | ColumnType::Time2                                  | ColumnValue::Time(String)          |
-| TIMESTAMP                                                           | MYSQL_TYPE_TIMESTAMP2 = 17  | ColumnType::TimeStamp2                             | ColumnValue::Timestamp(i64)        |
-| DATETIME                                                            | MYSQL_TYPE_DATETIME2 = 18   | ColumnType::DateTime2                              | ColumnValue::DateTime(String)      |
-| YEAR                                                                | MYSQL_TYPE_YEAR = 13        | ColumnType::Year                                   | ColumnValue::Year(u16)             |
-| CHAR                                                                | MYSQL_TYPE_STRING = 254     | ColumnType::String                                 | ColumnValue::String(Vec&lt;u8&gt;) |
-| VARCHAR                                                             | MYSQL_TYPE_VARCHAR = 15     | ColumnType::VarChar                                | ColumnValue::String(Vec&lt;u8&gt;) |
-| BINARY                                                              | MYSQL_TYPE_STRING = 254     | ColumnType::String                                 | ColumnValue::String(Vec&lt;u8&gt;) |
-| VARBINARY                                                           | MYSQL_TYPE_VARCHAR = 15     | ColumnType::VarChar                                | ColumnValue::String(Vec&lt;u8&gt;) |
-| ENUM                                                                | MYSQL_TYPE_STRING = 254     | ColumnType::Enum                                   | ColumnValue::Enum(u32)             |
-| SET                                                                 | MYSQL_TYPE_STRING = 254     | ColumnType::Set                                    | ColumnValue::Set(u64)              |
-| TINYTEXT TEXT MEDIUMTEXT LONGTEXT TINYBLOB BLOB MEDIUMBLOB LONGBLOB | MYSQL_TYPE_BLOB = 252       | ColumnType::Blob                                   | ColumnValue::Blob(Vec&lt;u8&gt;)   |
-| GEOMETRY                                                            | MYSQL_TYPE_GEOMETRY = 255   | ColumnType::Geometry                               | ColumnValue::Blob(Vec&lt;u8&gt;)   |
-| JSON                                                                | MYSQL_TYPE_JSON = 245       | ColumnType::Json                                   | ColumnValue::Json(Vec&lt;u8&gt;)   |
 
-- for CHAR / VARCHAR columns, since binlog contains no charset information, we just get raw bytes and store them in ColumnValue::String(Vec&lt;u8&gt;) objects, you may need to convert them into strings based on column metadatas for further usage.
+| mysql column type                                                   | binlog column type(raw)     | binlog column type(parsed from binlog column meta) | rust type                     |
+| ------------------------------------------------------------------- | --------------------------- | -------------------------------------------------- | ----------------------------- |
+| BIT                                                                 | MYSQL_TYPE_BIT = 16         | ColumnType::Bit                                    | ColumnValue::Bit(u64)         |
+| TINYINT [UNSIGNED]                                                  | MYSQL_TYPE_TINY = 1         | ColumnType::Tiny                                   | ColumnValue::Tiny(i8)         |
+| SMALLINT [UNSIGNED]                                                 | MYSQL_TYPE_SHORT = 2        | ColumnType::Short                                  | ColumnValue::Short(i16)       |
+| MEDIUMINT [UNSIGNED]                                                | MYSQL_TYPE_INT24 = 9        | ColumnType::Int24                                  | ColumnValue::Long(i32)        |
+| INT [UNSIGNED]                                                      | MYSQL_TYPE_LONG = 3         | ColumnType::Long                                   | ColumnValue::Long(i32)        |
+| BIGINT [UNSIGNED]                                                   | MYSQL_TYPE_LONGLONG = 8     | ColumnType::LongLong                               | ColumnValue::LongLong(i64)    |
+| FLOAT                                                               | MYSQL_TYPE_FLOAT = 4        | ColumnType::Float                                  | ColumnValue::Float(f32)       |
+| DOUBLE                                                              | MYSQL_TYPE_DOUBLE = 5       | ColumnType::Double                                 | ColumnValue::Double(f64)      |
+| DECIMAL                                                             | MYSQL_TYPE_NEWDECIMAL = 246 | ColumnType::NewDecimal                             | ColumnValue::Decimal(String)  |
+| DATE                                                                | MYSQL_TYPE_DATE = 10        | ColumnType::Date                                   | ColumnValue::Date(String)     |
+| TIME                                                                | MYSQL_TYPE_TIME2 = 19       | ColumnType::Time2                                  | ColumnValue::Time(String)     |
+| TIMESTAMP                                                           | MYSQL_TYPE_TIMESTAMP2 = 17  | ColumnType::TimeStamp2                             | ColumnValue::Timestamp(i64)   |
+| DATETIME                                                            | MYSQL_TYPE_DATETIME2 = 18   | ColumnType::DateTime2                              | ColumnValue::DateTime(String) |
+| YEAR                                                                | MYSQL_TYPE_YEAR = 13        | ColumnType::Year                                   | ColumnValue::Year(u16)        |
+| CHAR                                                                | MYSQL_TYPE_STRING = 254     | ColumnType::String                                 | ColumnValue::String(Vec)      |
+| VARCHAR                                                             | MYSQL_TYPE_VARCHAR = 15     | ColumnType::VarChar                                | ColumnValue::String(Vec)      |
+| BINARY                                                              | MYSQL_TYPE_STRING = 254     | ColumnType::String                                 | ColumnValue::String(Vec)      |
+| VARBINARY                                                           | MYSQL_TYPE_VARCHAR = 15     | ColumnType::VarChar                                | ColumnValue::String(Vec)      |
+| ENUM                                                                | MYSQL_TYPE_STRING = 254     | ColumnType::Enum                                   | ColumnValue::Enum(u32)        |
+| SET                                                                 | MYSQL_TYPE_STRING = 254     | ColumnType::Set                                    | ColumnValue::Set(u64)         |
+| TINYTEXT TEXT MEDIUMTEXT LONGTEXT TINYBLOB BLOB MEDIUMBLOB LONGBLOB | MYSQL_TYPE_BLOB = 252       | ColumnType::Blob                                   | ColumnValue::Blob(Vec)        |
+| GEOMETRY                                                            | MYSQL_TYPE_GEOMETRY = 255   | ColumnType::Geometry                               | ColumnValue::Blob(Vec)        |
+| JSON                                                                | MYSQL_TYPE_JSON = 245       | ColumnType::Json                                   | ColumnValue::Json(Vec)        |
+
+
+- for CHAR / VARCHAR columns, since binlog contains no charset information, we just get raw bytes and store them in ColumnValue::String(Vec) objects, you may need to convert them into strings based on column metadatas for further usage.
 - for UNSIGNED numeric columns, since binlog contains no unsigned flags, we just parse them as signed numerics, you may need to convert them into unsigned values based on column metadatas for further usage.
-- for JSON columns, we get raw bytes and store them in ColumnValue::Json(Vec&lt;u8&gt;) objects, we also provide a default deserializer "JsonBinary" to parse them into strings, find example later in this doc.
+- for JSON columns, we get raw bytes and store them in ColumnValue::Json(Vec) objects, we also provide a default deserializer "JsonBinary" to parse them into strings, find example later in this doc.
 
 ## Quick start
 
@@ -137,10 +138,41 @@ binlog_parse_millis=100
 cargo test --package mysql-binlog-connector-rust --test integration_test
 ```
 
+- TLS configuration
+- TLS is optional and disabled by default.
+- To require TLS, append `ssl-mode=required` to `db_url`. To use plain TCP, set `ssl-mode=disabled` or omit it.
+- This crate currently supports two TLS backends:
+-   `openssl-tls`: better compatibility with older MySQL 5.7 TLS stacks
+-   `rustls`: pure Rust TLS backend
+- Enable exactly one TLS feature when building:
+
+```
+cargo test --package mysql-binlog-connector-rust --test integration_test --features openssl-tls
+```
+
+or
+
+```
+cargo test --package mysql-binlog-connector-rust --test integration_test --features rustls
+```
+
+- example `db_url` with TLS enabled:
+
+```
+db_url=mysql://root:123456@127.0.0.1:3307?ssl-mode=required
+```
+
+- example `db_url` with TLS disabled:
+
+```
+db_url=mysql://root:123456@127.0.0.1:3307?ssl-mode=disabled
+```
+
+- Note: current TLS implementation skips server certificate verification. It encrypts the transport, but does not verify server identity.
 - each test will:
-- &nbsp; execute sqls to create tables and generate binlogs
-- &nbsp; dump and parse binlogs
-- &nbsp; wait binlog_parse_millis for all binlogs to be parsed
+-   execute sqls to create tables and generate binlogs
+-   dump and parse binlogs
+-   wait binlog_parse_millis for all binlogs to be parsed
 - you may increase binlog_parse_millis for big transactions
 
 ## Examples
@@ -193,6 +225,18 @@ async fn dump_and_parse() {
         println!();
     }
 }
+```
+
+- Run the example with TLS support:
+
+```
+cargo run -p mysql-binlog-connector-rust-example
+```
+
+- The bundled example crate currently enables `openssl-tls` by default. If you want to switch to `rustls`, update `example/Cargo.toml` and set:
+
+```toml
+mysql-binlog-connector-rust = { path = "../", features = ["rustls"] }
 ```
 
 ### Example 1: parse binlogs with binlog-transaction-compression disabled
@@ -477,3 +521,4 @@ async fn parse_file() {
     }
 }
 ```
+

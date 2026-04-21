@@ -4,7 +4,7 @@ use url::Url;
 
 use crate::{
     binlog_error::BinlogError,
-    constants::MysqlRespCode,
+    constants::{ClientCapabilities, MysqlRespCode, NULL_TERMINATOR},
     network::{
         auth_plugin_switch_packet::AuthPluginSwitchPacket,
         greeting_packet::GreetingPacket,
@@ -16,7 +16,32 @@ use super::{
     auth_native_password_command::AuthNativePasswordCommand, auth_plugin::AuthPlugin,
     auth_sha2_password_command::AuthSha2PasswordCommand,
     auth_sha2_rsa_password_command::AuthSha2RsaPasswordCommand, command_util::CommandUtil,
+    ssl_request_command::SSLRequestCommand,
 };
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum TlsMode {
+    Disabled,
+    Required,
+}
+
+impl TlsMode {
+    fn from_url(url: &Url) -> Result<Self, BinlogError> {
+        let ssl_mode = url
+            .query_pairs()
+            .find_map(|(key, value)| (key == "ssl-mode").then_some(value.into_owned()))
+            .unwrap_or_else(|| "disabled".into());
+
+        match ssl_mode.to_ascii_lowercase().as_str() {
+            "disabled" => Ok(Self::Disabled),
+            "required" => Ok(Self::Required),
+            other => Err(BinlogError::ConnectError(format!(
+                "unsupported ssl-mode: {}",
+                other
+            ))),
+        }
+    }
+}
 
 pub struct Authenticator {
     host: String,
@@ -28,6 +53,7 @@ pub struct Authenticator {
     collation: u8,
     timeout_secs: u64,
     keepalive_config: Option<KeepAliveConfig>,
+    tls_mode: TlsMode,
 }
 
 impl Authenticator {
@@ -50,6 +76,16 @@ impl Authenticator {
             }
         }
 
+        let tls_mode = TlsMode::from_url(&url_info)?;
+        if tls_mode == TlsMode::Required
+            && !cfg!(any(feature = "rustls", feature = "openssl-tls"))
+        {
+            return Err(BinlogError::ConnectError(
+                "TLS requested via ssl-mode=required, but crate was built without a TLS feature"
+                    .into(),
+            ));
+        }
+
         Ok(Self {
             host: percent_decode_str(host).decode_utf8_lossy().to_string(),
             port,
@@ -60,11 +96,11 @@ impl Authenticator {
             collation: 0,
             timeout_secs,
             keepalive_config,
+            tls_mode,
         })
     }
 
     pub async fn connect(&mut self) -> Result<PacketChannel, BinlogError> {
-        // connect to hostname:port
         let mut channel = PacketChannel::new(
             &self.host,
             &self.port,
@@ -73,22 +109,67 @@ impl Authenticator {
         )
         .await?;
 
-        // read and parse greeting packet
-        let (greeting_buf, sequence) = channel.read_with_sequece().await?;
+        let (greeting_buf, greeting_sequence) = channel.read_with_sequece().await?;
         let greeting_packet = GreetingPacket::new(greeting_buf)?;
 
         self.collation = greeting_packet.server_collation;
         self.scramble = greeting_packet.scramble;
 
-        // authenticate
+        let mut next_sequence = greeting_sequence + 1;
+        if self.tls_mode == TlsMode::Required {
+            if greeting_packet.server_capabilities & ClientCapabilities::SSL as u16 == 0 {
+                return Err(BinlogError::ConnectError(
+                    "mysql server does not support tls".into(),
+                ));
+            }
+
+            let ssl_request = SSLRequestCommand {
+                client_capabilities: self.client_capabilities_for_plugin(
+                    &greeting_packet.plugin_provided_data,
+                ),
+                collation: self.collation,
+            };
+            channel
+                .write(&ssl_request.to_bytes()?, next_sequence)
+                .await?;
+            channel.upgrade_to_tls(&self.host).await?;
+            next_sequence += 1;
+        }
+
         self.authenticate(
             &mut channel,
             &greeting_packet.plugin_provided_data,
-            sequence,
+            next_sequence,
         )
         .await?;
 
         Ok(channel)
+    }
+
+    fn base_client_capabilities(&self) -> u32 {
+        let mut client_capabilities = ClientCapabilities::LONG_FLAG
+            | ClientCapabilities::LONG_PASSWORD
+            | ClientCapabilities::PROTOCOL_41
+            | ClientCapabilities::TRANSACTIONS
+            | ClientCapabilities::SECURE_CONNECTION;
+        if !self.schema.is_empty() {
+            client_capabilities |= ClientCapabilities::CONNECT_WITH_DB;
+        }
+        client_capabilities
+    }
+
+    fn client_capabilities_for_plugin(&self, auth_plugin_name: &str) -> u32 {
+        let mut client_capabilities = self.base_client_capabilities();
+        match AuthPlugin::from_name(auth_plugin_name) {
+            AuthPlugin::MySqlNativePassword => {
+                client_capabilities |= ClientCapabilities::PLUGIN_AUTH;
+            }
+            AuthPlugin::CachingSha2Password => {
+                client_capabilities |= ClientCapabilities::PLUGIN_AUTH;
+            }
+            AuthPlugin::Unsupported => {}
+        }
+        client_capabilities
     }
 
     async fn authenticate(
@@ -97,6 +178,7 @@ impl Authenticator {
         auth_plugin_name: &str,
         sequence: u8,
     ) -> Result<(), BinlogError> {
+        let client_capabilities = self.client_capabilities_for_plugin(auth_plugin_name);
         let command_buf = match AuthPlugin::from_name(auth_plugin_name) {
             AuthPlugin::MySqlNativePassword => AuthNativePasswordCommand {
                 schema: self.schema.clone(),
@@ -104,6 +186,7 @@ impl Authenticator {
                 password: self.password.clone(),
                 scramble: self.scramble.clone(),
                 collation: self.collation,
+                client_capabilities,
             }
             .to_bytes()?,
 
@@ -113,6 +196,7 @@ impl Authenticator {
                 password: self.password.clone(),
                 scramble: self.scramble.clone(),
                 collation: self.collation,
+                client_capabilities,
             }
             .to_bytes()?,
 
@@ -121,7 +205,7 @@ impl Authenticator {
             }
         };
 
-        channel.write(&command_buf, sequence + 1).await?;
+        channel.write(&command_buf, sequence).await?;
         let (auth_res, sequence) = channel.read_with_sequece().await?;
         self.handle_auth_result(channel, auth_plugin_name, sequence, &auth_res)
             .await
@@ -134,18 +218,14 @@ impl Authenticator {
         sequence: u8,
         auth_res: &Vec<u8>,
     ) -> Result<(), BinlogError> {
-        // parse result
         match auth_res[0] {
             MysqlRespCode::OK => return Ok(()),
-
             MysqlRespCode::ERROR => return CommandUtil::check_error_packet(auth_res),
-
             MysqlRespCode::AUTH_PLUGIN_SWITCH => {
                 return self
                     .handle_auth_plugin_switch(channel, sequence, auth_res)
                     .await;
             }
-
             _ => match AuthPlugin::from_name(auth_plugin_name) {
                 AuthPlugin::MySqlNativePassword => {
                     return Err(BinlogError::ConnectError(format!(
@@ -153,15 +233,12 @@ impl Authenticator {
                         auth_res[0]
                     )));
                 }
-
                 AuthPlugin::CachingSha2Password => {
                     return self
                         .handle_sha2_auth_result(channel, sequence, auth_res)
                         .await;
                 }
-
-                // won't happen
-                _ => {}
+                AuthPlugin::Unsupported => {}
             },
         };
 
@@ -186,6 +263,7 @@ impl Authenticator {
                 password: self.password.clone(),
                 scramble: self.scramble.clone(),
                 collation: self.collation,
+                client_capabilities: self.base_client_capabilities(),
             }
             .encrypted_password()?,
 
@@ -195,6 +273,7 @@ impl Authenticator {
                 password: self.password.clone(),
                 scramble: self.scramble.clone(),
                 collation: self.collation,
+                client_capabilities: self.base_client_capabilities(),
             }
             .encrypted_password()?,
 
@@ -218,12 +297,18 @@ impl Authenticator {
         sequence: u8,
         auth_res: &[u8],
     ) -> Result<(), BinlogError> {
-        // buf[0] is the length of buf, always 1
+        if auth_res.len() < 2 {
+            return Err(BinlogError::ConnectError(
+                "unexpected short auth result for caching_sha2_password".into(),
+            ));
+        }
+
         match auth_res[1] {
             0x03 => Ok(()),
-
+            0x04 if channel.is_secure_transport() => {
+                self.sha2_secure_authenticate(channel, sequence).await
+            }
             0x04 => self.sha2_rsa_authenticate(channel, sequence).await,
-
             _ => Err(BinlogError::ConnectError(format!(
                 "unexpected auth result for caching_sha2_password: {}",
                 auth_res[1]
@@ -231,18 +316,28 @@ impl Authenticator {
         }
     }
 
+    async fn sha2_secure_authenticate(
+        &self,
+        channel: &mut PacketChannel,
+        sequence: u8,
+    ) -> Result<(), BinlogError> {
+        let mut password = self.password.as_bytes().to_vec();
+        password.push(NULL_TERMINATOR);
+        channel.write(&password, sequence + 1).await?;
+
+        let (auth_res, _) = channel.read_with_sequece().await?;
+        CommandUtil::parse_result(&auth_res)
+    }
+
     async fn sha2_rsa_authenticate(
         &self,
         channel: &mut PacketChannel,
         sequence: u8,
     ) -> Result<(), BinlogError> {
-        // refer: https://mariadb.com/kb/en/caching_sha2_password-authentication-plugin/
-        // try to get RSA key from server
         channel.write(&[0x02], sequence + 1).await?;
         let (rsa_res, sequence) = channel.read_with_sequece().await?;
         match rsa_res[0] {
             0x01 => {
-                // try sha2 authentication with rsa
                 let mut command = AuthSha2RsaPasswordCommand {
                     rsa_res: rsa_res[1..].to_vec(),
                     password: self.password.clone(),
@@ -260,4 +355,58 @@ impl Authenticator {
             ))),
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Authenticator, TlsMode};
+
+    #[test]
+    fn parses_default_ssl_mode_as_disabled() {
+        let auth = Authenticator::new("mysql://root:pwd@127.0.0.1:3306/test", 3, None).unwrap();
+        assert_eq!(auth.tls_mode, TlsMode::Disabled);
+    }
+
+    #[test]
+    fn rejects_unsupported_ssl_mode() {
+        let err = Authenticator::new(
+            "mysql://root:pwd@127.0.0.1:3306/test?ssl-mode=preferred",
+            3,
+            None,
+        )
+        .err()
+        .unwrap();
+
+        assert!(err.to_string().contains("unsupported ssl-mode"));
+    }
+
+    #[cfg(not(any(feature = "rustls", feature = "openssl-tls")))]
+    #[test]
+    fn rejects_required_tls_without_tls_feature() {
+        let err = Authenticator::new(
+            "mysql://root:pwd@127.0.0.1:3306/test?ssl-mode=required",
+            3,
+            None,
+        )
+        .err()
+        .unwrap();
+
+        assert!(err
+            .to_string()
+            .contains("built without a TLS feature"));
+    }
+
+    #[cfg(any(feature = "rustls", feature = "openssl-tls"))]
+    #[test]
+    fn accepts_required_tls_with_tls_feature() {
+        let auth = Authenticator::new(
+            "mysql://root:pwd@127.0.0.1:3306/test?ssl-mode=required",
+            3,
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(auth.tls_mode, TlsMode::Required);
+    }
+
 }

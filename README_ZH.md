@@ -137,6 +137,39 @@ binlog_parse_millis=100
 cargo test --package mysql-binlog-connector-rust --test integration_test
 ```
 
+- TLS 配置说明
+
+- TLS 默认关闭，为可选功能。
+- 如果要强制启用 TLS，请在 `db_url` 中追加 `ssl-mode=required`。如果要使用明文 TCP，请设置 `ssl-mode=disabled`，或者省略该参数。
+- 当前支持两种 TLS 后端：
+- &nbsp; `openssl-tls`：对老版本 MySQL 5.7 的 TLS 兼容性更好
+- &nbsp; `rustls`：纯 Rust TLS 实现
+- 编译时只能启用一个 TLS feature：
+
+```
+cargo test --package mysql-binlog-connector-rust --test integration_test --features openssl-tls
+```
+
+或者：
+
+```
+cargo test --package mysql-binlog-connector-rust --test integration_test --features rustls
+```
+
+- 开启 TLS 的 `db_url` 示例：
+
+```
+db_url=mysql://root:123456@127.0.0.1:3307?ssl-mode=required
+```
+
+- 关闭 TLS 的 `db_url` 示例：
+
+```
+db_url=mysql://root:123456@127.0.0.1:3307?ssl-mode=disabled
+```
+
+- 注意：当前 TLS 实现会跳过服务端证书校验。也就是说链路会被加密，但不会校验服务端身份。
+
 - 每个测试用例会：
 - &nbsp; &nbsp; &nbsp; &nbsp; 执行 sql 并生成 binlog
 - &nbsp; &nbsp; &nbsp; &nbsp; 获取 binlog 并解析
@@ -193,6 +226,18 @@ async fn dump_and_parse() {
         println!();
     }
 }
+```
+
+- 使用带 TLS 支持的 example：
+
+```
+cargo run -p mysql-binlog-connector-rust-example
+```
+
+- 当前仓库内置的 example 默认启用了 `openssl-tls`。如果你想切换为 `rustls`，可以修改 `example/Cargo.toml`：
+
+```toml
+mysql-binlog-connector-rust = { path = "../", features = ["rustls"] }
 ```
 
 ### 用例 1: 解析关闭 binlog-transaction-compression 的事务

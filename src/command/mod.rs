@@ -9,3 +9,4 @@ pub mod dump_binlog_command;
 pub mod dump_binlog_gtid_command;
 pub mod gtid_set;
 pub mod query_command;
+pub mod ssl_request_command;
