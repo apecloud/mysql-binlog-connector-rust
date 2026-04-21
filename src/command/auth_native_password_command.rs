@@ -13,6 +13,7 @@ pub struct AuthNativePasswordCommand {
     pub password: String,
     pub scramble: String,
     pub collation: u8,
+    pub client_capabilities: u32,
 }
 
 impl AuthNativePasswordCommand {
@@ -24,13 +25,7 @@ impl AuthNativePasswordCommand {
     pub fn to_bytes(&mut self) -> Result<Vec<u8>, BinlogError> {
         let mut buf = Vec::new();
 
-        let mut client_capabilities = ClientCapabilities::LONG_FLAG
-            | ClientCapabilities::PROTOCOL_41
-            | ClientCapabilities::SECURE_CONNECTION
-            | ClientCapabilities::PLUGIN_AUTH;
-        if !self.schema.is_empty() {
-            client_capabilities |= ClientCapabilities::CONNECT_WITH_DB;
-        }
+        let client_capabilities = self.client_capabilities | ClientCapabilities::PLUGIN_AUTH;
         buf.write_u32::<LittleEndian>(client_capabilities)?;
 
         // maximum packet length
