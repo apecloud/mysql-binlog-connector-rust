@@ -2,6 +2,8 @@ use byteorder::{LittleEndian, WriteBytesExt};
 
 use crate::{binlog_error::BinlogError, constants::ClientCapabilities};
 
+const MAX_PACKET_SIZE: u32 = 16_777_215;
+
 pub struct SSLRequestCommand {
     pub client_capabilities: u32,
     pub collation: u8,
@@ -13,7 +15,7 @@ impl SSLRequestCommand {
         let client_capabilities = self.client_capabilities | ClientCapabilities::SSL;
 
         buf.write_u32::<LittleEndian>(client_capabilities)?;
-        buf.write_u32::<LittleEndian>(0)?;
+        buf.write_u32::<LittleEndian>(MAX_PACKET_SIZE)?;
         buf.write_u8(self.collation)?;
 
         for _ in 0..23 {
@@ -28,7 +30,7 @@ impl SSLRequestCommand {
 mod tests {
     use crate::constants::ClientCapabilities;
 
-    use super::SSLRequestCommand;
+    use super::{SSLRequestCommand, MAX_PACKET_SIZE};
 
     #[test]
     fn ssl_request_sets_ssl_capability() {
@@ -47,5 +49,17 @@ mod tests {
             ClientCapabilities::SSL
         );
         assert_eq!(bytes[8], 45);
+    }
+
+    #[test]
+    fn ssl_request_uses_max_packet_size() {
+        let bytes = SSLRequestCommand {
+            client_capabilities: ClientCapabilities::LONG_FLAG,
+            collation: 45,
+        }
+        .to_bytes()
+        .unwrap();
+
+        assert_eq!(u32::from_le_bytes(bytes[4..8].try_into().unwrap()), MAX_PACKET_SIZE);
     }
 }

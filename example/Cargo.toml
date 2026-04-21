@@ -6,4 +6,5 @@ edition = "2021"
 [dependencies]
 dotenv = "0.15.0"
 futures = "0.3"
-mysql-binlog-connector-rust = { path = "../", features = ["rustls"]}
+mysql-binlog-connector-rust = { path = "../", features = ["openssl-tls"] }
+# mysql-binlog-connector-rust = { path = "../", features = ["rustls"] }

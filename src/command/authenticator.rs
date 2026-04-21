@@ -77,9 +77,11 @@ impl Authenticator {
         }
 
         let tls_mode = TlsMode::from_url(&url_info)?;
-        if tls_mode == TlsMode::Required && !cfg!(feature = "rustls") {
+        if tls_mode == TlsMode::Required
+            && !cfg!(any(feature = "rustls", feature = "openssl-tls"))
+        {
             return Err(BinlogError::ConnectError(
-                "TLS requested via ssl-mode=required, but crate was built without the 'rustls' feature"
+                "TLS requested via ssl-mode=required, but crate was built without a TLS feature"
                     .into(),
             ));
         }
@@ -378,9 +380,9 @@ mod tests {
         assert!(err.to_string().contains("unsupported ssl-mode"));
     }
 
-    #[cfg(not(feature = "rustls"))]
+    #[cfg(not(any(feature = "rustls", feature = "openssl-tls")))]
     #[test]
-    fn rejects_required_tls_without_rustls_feature() {
+    fn rejects_required_tls_without_tls_feature() {
         let err = Authenticator::new(
             "mysql://root:pwd@127.0.0.1:3306/test?ssl-mode=required",
             3,
@@ -391,12 +393,12 @@ mod tests {
 
         assert!(err
             .to_string()
-            .contains("built without the 'rustls' feature"));
+            .contains("built without a TLS feature"));
     }
 
-    #[cfg(feature = "rustls")]
+    #[cfg(any(feature = "rustls", feature = "openssl-tls"))]
     #[test]
-    fn accepts_required_tls_with_rustls_feature() {
+    fn accepts_required_tls_with_tls_feature() {
         let auth = Authenticator::new(
             "mysql://root:pwd@127.0.0.1:3306/test?ssl-mode=required",
             3,
@@ -406,4 +408,5 @@ mod tests {
 
         assert_eq!(auth.tls_mode, TlsMode::Required);
     }
+
 }

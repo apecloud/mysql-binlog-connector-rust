@@ -23,6 +23,7 @@ readme = "README.md"
 [features]
 default = []
 rustls = ["dep:futures", "dep:futures-rustls", "dep:rustls"]
+openssl-tls = ["dep:openssl", "dep:async-std-openssl"]
 
 [dependencies]
 byteorder = "1.4.3"
@@ -47,3 +48,5 @@ socket2 = "0.6.1"
 futures = { version = "0.3", optional = true }
 futures-rustls = { version = "0.26", optional = true }
 rustls = { version = "0.23", optional = true }
+openssl = { version = "0.10", optional = true }
+async-std-openssl = { version = "0.6", optional = true }

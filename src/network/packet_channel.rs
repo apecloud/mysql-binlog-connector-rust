@@ -3,12 +3,15 @@ use std::os::unix::io::AsRawFd;
 #[cfg(windows)]
 use std::os::windows::io::AsRawSocket;
 
+#[cfg(all(feature = "rustls", feature = "openssl-tls"))]
+compile_error!("features 'rustls' and 'openssl-tls' are mutually exclusive");
+
+#[cfg(feature = "rustls")]
+use std::net::IpAddr;
 use std::{
     io::{Cursor, Write},
     time::Duration,
 };
-#[cfg(feature = "rustls")]
-use std::net::IpAddr;
 
 use async_std::{
     future::timeout,
@@ -20,12 +23,16 @@ use log::{trace, warn};
 
 use crate::binlog_error::BinlogError;
 
+#[cfg(feature = "openssl-tls")]
+use async_std_openssl::SslStream as OpenSslStream;
 #[cfg(feature = "rustls")]
 use futures::io::{AsyncReadExt, AsyncWriteExt};
 #[cfg(feature = "rustls")]
 use futures_rustls::client::TlsStream;
 #[cfg(feature = "rustls")]
 use futures_rustls::TlsConnector;
+#[cfg(feature = "openssl-tls")]
+use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
 #[cfg(feature = "rustls")]
 use rustls::pki_types::{CertificateDer, ServerName, UnixTime};
 #[cfg(feature = "rustls")]
@@ -41,7 +48,9 @@ const MAX_PACKET_LENGTH: usize = 16777215;
 enum ChannelStream {
     Plain(TcpStream),
     #[cfg(feature = "rustls")]
-    Tls(Box<TlsStream<TcpStream>>),
+    TlsRustls(Box<TlsStream<TcpStream>>),
+    #[cfg(feature = "openssl-tls")]
+    TlsOpenSsl(Box<OpenSslStream<TcpStream>>),
 }
 
 pub struct PacketChannel {
@@ -194,7 +203,9 @@ impl PacketChannel {
         match self.stream.as_ref() {
             Some(ChannelStream::Plain(_)) => false,
             #[cfg(feature = "rustls")]
-            Some(ChannelStream::Tls(_)) => true,
+            Some(ChannelStream::TlsRustls(_)) => true,
+            #[cfg(feature = "openssl-tls")]
+            Some(ChannelStream::TlsOpenSsl(_)) => true,
             None => false,
         }
     }
@@ -203,8 +214,13 @@ impl PacketChannel {
     pub async fn upgrade_to_tls(&mut self, host: &str) -> Result<(), BinlogError> {
         let plain_stream = match self.stream.take() {
             Some(ChannelStream::Plain(stream)) => stream,
-            Some(ChannelStream::Tls(stream)) => {
-                self.stream = Some(ChannelStream::Tls(stream));
+            Some(ChannelStream::TlsRustls(stream)) => {
+                self.stream = Some(ChannelStream::TlsRustls(stream));
+                return Ok(());
+            }
+            #[cfg(feature = "openssl-tls")]
+            Some(ChannelStream::TlsOpenSsl(stream)) => {
+                self.stream = Some(ChannelStream::TlsOpenSsl(stream));
                 return Ok(());
             }
             None => {
@@ -225,7 +241,7 @@ impl PacketChannel {
             .await
             .map_err(|e| BinlogError::ConnectError(format!("tls handshake failed: {}", e)))?;
 
-        self.stream = Some(ChannelStream::Tls(Box::new(tls_stream)));
+        self.stream = Some(ChannelStream::TlsRustls(Box::new(tls_stream)));
         Ok(())
     }
 
@@ -240,9 +256,59 @@ impl PacketChannel {
     }
 
     #[cfg(not(feature = "rustls"))]
+    #[cfg(feature = "openssl-tls")]
+    pub async fn upgrade_to_tls(&mut self, host: &str) -> Result<(), BinlogError> {
+        let plain_stream = match self.stream.take() {
+            Some(ChannelStream::Plain(stream)) => stream,
+            #[cfg(feature = "rustls")]
+            Some(ChannelStream::TlsRustls(stream)) => {
+                self.stream = Some(ChannelStream::TlsRustls(stream));
+                return Ok(());
+            }
+            Some(ChannelStream::TlsOpenSsl(stream)) => {
+                self.stream = Some(ChannelStream::TlsOpenSsl(stream));
+                return Ok(());
+            }
+            None => {
+                return Err(BinlogError::ConnectError(
+                    "cannot upgrade a disconnected channel to tls".into(),
+                ))
+            }
+        };
+
+        let mut builder = SslConnector::builder(SslMethod::tls_client()).map_err(|e| {
+            BinlogError::ConnectError(format!("failed to build openssl connector: {}", e))
+        })?;
+        builder.set_verify(SslVerifyMode::NONE);
+
+        let ssl = builder
+            .build()
+            .configure()
+            .map_err(|e| {
+                BinlogError::ConnectError(format!("failed to configure openssl connector: {}", e))
+            })?
+            .into_ssl(host)
+            .map_err(|e| {
+                BinlogError::ConnectError(format!("failed to prepare openssl session: {}", e))
+            })?;
+
+        let mut tls_stream = OpenSslStream::new(ssl, plain_stream).map_err(|e| {
+            BinlogError::ConnectError(format!("failed to create openssl stream: {}", e))
+        })?;
+        AsyncStdWriteExt::flush(&mut tls_stream).await?;
+        std::pin::Pin::new(&mut tls_stream)
+            .connect()
+            .await
+            .map_err(|e| BinlogError::ConnectError(format!("tls handshake failed: {}", e)))?;
+
+        self.stream = Some(ChannelStream::TlsOpenSsl(Box::new(tls_stream)));
+        Ok(())
+    }
+
+    #[cfg(not(any(feature = "rustls", feature = "openssl-tls")))]
     pub async fn upgrade_to_tls(&mut self, _host: &str) -> Result<(), BinlogError> {
         Err(BinlogError::ConnectError(
-            "TLS support is unavailable because the 'rustls' feature is disabled".into(),
+            "TLS support is unavailable because no TLS feature is enabled".into(),
         ))
     }
 
@@ -252,8 +318,12 @@ impl PacketChannel {
                 stream.shutdown(std::net::Shutdown::Both)?;
             }
             #[cfg(feature = "rustls")]
-            Some(ChannelStream::Tls(stream)) => {
+            Some(ChannelStream::TlsRustls(stream)) => {
                 AsyncWriteExt::close(stream.as_mut()).await?;
+            }
+            #[cfg(feature = "openssl-tls")]
+            Some(ChannelStream::TlsOpenSsl(stream)) => {
+                stream.get_mut().shutdown(std::net::Shutdown::Both)?;
             }
             None => {}
         }
@@ -384,9 +454,14 @@ impl PacketChannel {
                 AsyncStdWriteExt::flush(stream).await?;
             }
             #[cfg(feature = "rustls")]
-            Some(ChannelStream::Tls(stream)) => {
+            Some(ChannelStream::TlsRustls(stream)) => {
                 AsyncWriteExt::write_all(stream.as_mut(), buf).await?;
                 AsyncWriteExt::flush(stream.as_mut()).await?;
+            }
+            #[cfg(feature = "openssl-tls")]
+            Some(ChannelStream::TlsOpenSsl(stream)) => {
+                AsyncStdWriteExt::write_all(stream.as_mut(), buf).await?;
+                AsyncStdWriteExt::flush(stream.as_mut()).await?;
             }
             None => {
                 return Err(BinlogError::ConnectError(
@@ -401,7 +476,13 @@ impl PacketChannel {
         let read = match self.stream.as_mut() {
             Some(ChannelStream::Plain(stream)) => AsyncStdReadExt::read(stream, buf).await?,
             #[cfg(feature = "rustls")]
-            Some(ChannelStream::Tls(stream)) => AsyncReadExt::read(stream.as_mut(), buf).await?,
+            Some(ChannelStream::TlsRustls(stream)) => {
+                AsyncReadExt::read(stream.as_mut(), buf).await?
+            }
+            #[cfg(feature = "openssl-tls")]
+            Some(ChannelStream::TlsOpenSsl(stream)) => {
+                AsyncStdReadExt::read(stream.as_mut(), buf).await?
+            }
             None => {
                 return Err(BinlogError::ConnectError(
                     "channel stream is unavailable".into(),
