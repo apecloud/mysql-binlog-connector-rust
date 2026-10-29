@@ -10,7 +10,7 @@ pub struct PreviousGtidsEvent {
 }
 
 impl PreviousGtidsEvent {
-    pub fn parse(cursor: &mut Cursor<&Vec<u8>>) -> Result<Self, BinlogError> {
+    pub fn parse(cursor: &mut Cursor<impl AsRef<[u8]>>) -> Result<Self, BinlogError> {
         let uuid_count = cursor.read_u64::<LittleEndian>()?;
         let mut gtids: Vec<String> = Vec::with_capacity(uuid_count as usize);
 
@@ -25,7 +25,7 @@ impl PreviousGtidsEvent {
         })
     }
 
-    fn read_interval(cursor: &mut Cursor<&Vec<u8>>) -> Result<String, BinlogError> {
+    fn read_interval(cursor: &mut Cursor<impl AsRef<[u8]>>) -> Result<String, BinlogError> {
         let interval_count = cursor.read_u64::<LittleEndian>()?;
         let mut intervals = Vec::with_capacity(interval_count as usize);
 

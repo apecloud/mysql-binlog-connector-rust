@@ -44,7 +44,36 @@ impl BinlogParser {
             - self.checksum_length as usize;
 
         let buf = self.read_event_data(stream, data_length)?;
-        let mut cursor = Cursor::new(&buf);
+        self.parse_body(header, &buf)
+    }
+
+    /// Parse a buffered event without copying its body.
+    pub(crate) fn next_slice(
+        &mut self,
+        event: &[u8],
+    ) -> Result<(EventHeader, EventData), BinlogError> {
+        let header = EventHeader::parse(&mut Cursor::new(event))?;
+        let event_length = header.event_length as usize;
+        let header_length = constants::EVENT_HEADER_LENGTH;
+        let checksum_length = self.checksum_length as usize;
+
+        if event_length < header_length + checksum_length || event_length > event.len() {
+            return Err(BinlogError::UnexpectedData(
+                "invalid binlog event length".into(),
+            ));
+        }
+
+        let body = &event[header_length..event_length - checksum_length];
+        self.parse_body(header, body)
+    }
+
+    fn parse_body(
+        &mut self,
+        header: EventHeader,
+        body: &[u8],
+    ) -> Result<(EventHeader, EventData), BinlogError> {
+        let data_length = body.len();
+        let mut cursor = Cursor::new(body);
 
         let event_type = EventType::from_code(header.event_type);
         match event_type {

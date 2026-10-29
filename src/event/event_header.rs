@@ -36,7 +36,7 @@ impl EventHeader {
     // WriteRows / UpdateRows / DeleteRows
     // ExtWriteRows / ExtUpdateRows / ExtDeleteRows
     pub fn parse_rows_event_common_header(
-        cursor: &mut Cursor<&Vec<u8>>,
+        cursor: &mut Cursor<impl AsRef<[u8]>>,
         row_event_version: u8,
     ) -> Result<(u64, usize, Vec<bool>), BinlogError> {
         let table_id = cursor.read_u48::<LittleEndian>()?;

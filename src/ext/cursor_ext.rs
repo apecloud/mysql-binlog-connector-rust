@@ -25,7 +25,7 @@ pub trait CursorExt {
     fn read_bytes(&mut self, size: usize) -> Result<Vec<u8>, BinlogError>;
 }
 
-impl CursorExt for Cursor<&Vec<u8>> {
+impl<T: AsRef<[u8]>> CursorExt for Cursor<T> {
     /// Read bytes from cursor and parse into utf8 string
     fn read_string(&mut self, size: usize) -> Result<String, BinlogError> {
         let mut buf = vec![0; size];
@@ -115,6 +115,6 @@ impl CursorExt for Cursor<&Vec<u8>> {
 
     /// Return the available bytes count in cursor
     fn available(&mut self) -> usize {
-        self.get_ref().len() - self.position() as usize
+        self.get_ref().as_ref().len() - self.position() as usize
     }
 }

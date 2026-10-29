@@ -11,7 +11,7 @@ pub struct GtidEvent {
 }
 
 impl GtidEvent {
-    pub fn parse(cursor: &mut Cursor<&Vec<u8>>) -> Result<Self, BinlogError> {
+    pub fn parse(cursor: &mut Cursor<impl AsRef<[u8]>>) -> Result<Self, BinlogError> {
         // refer: https://dev.mysql.com/doc/refman/8.0/en/replication-gtids-concepts.html
         // refer: https://dev.mysql.com/doc/dev/mysql-server/latest/classbinary__log_1_1Gtid__event.html
         let flags = cursor.read_u8()?;
@@ -24,7 +24,7 @@ impl GtidEvent {
         })
     }
 
-    pub fn read_uuid(cursor: &mut Cursor<&Vec<u8>>) -> Result<String, BinlogError> {
+    pub fn read_uuid(cursor: &mut Cursor<impl AsRef<[u8]>>) -> Result<String, BinlogError> {
         Ok(format!(
             "{}-{}-{}-{}-{}",
             Self::bytes_to_hex_string(cursor, 4)?,
@@ -36,7 +36,7 @@ impl GtidEvent {
     }
 
     fn bytes_to_hex_string(
-        cursor: &mut Cursor<&Vec<u8>>,
+        cursor: &mut Cursor<impl AsRef<[u8]>>,
         byte_count: u8,
     ) -> Result<String, BinlogError> {
         let mut res = String::new();
