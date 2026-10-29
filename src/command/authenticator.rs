@@ -112,6 +112,7 @@ impl Authenticator {
         let (greeting_buf, greeting_sequence) = channel.read_with_sequece().await?;
         let greeting_packet = GreetingPacket::new(greeting_buf)?;
 
+        channel.set_server_version(greeting_packet.server_version);
         self.collation = greeting_packet.server_collation;
         self.scramble = greeting_packet.scramble;
 
@@ -360,6 +361,20 @@ impl Authenticator {
 #[cfg(test)]
 mod tests {
     use super::{Authenticator, TlsMode};
+
+    #[test]
+    fn parses_empty_and_encoded_passwords() {
+        for (url, expected) in [
+            ("mysql://user@127.0.0.1:3306/test", ""),
+            ("mysql://user:@127.0.0.1:3306/test", ""),
+            ("mysql://user:%20@127.0.0.1:3306/test", " "),
+            ("mysql://user:p%40ss@127.0.0.1:3306/test", "p@ss"),
+        ] {
+            let auth = Authenticator::new(url, 3, None).unwrap();
+            assert_eq!(auth.password, expected);
+            assert_eq!(auth.schema, "test");
+        }
+    }
 
     #[test]
     fn parses_default_ssl_mode_as_disabled() {

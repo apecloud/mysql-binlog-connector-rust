@@ -17,6 +17,12 @@ English | [中文](README_ZH.md)
 - binlog-file-position-based replication
 - gtid-based replication
 
+### Connection URL
+
+Use `mysql://user:password@host:port`. For an account configured with an empty password, both
+`mysql://user@host:port` and `mysql://user:@host:port` are supported with `mysql_native_password`
+and `caching_sha2_password`. The server still authenticates the account and checks its privileges.
+
 ### Supported event types
 
 - FORMAT_DESCRIPTION_EVENT

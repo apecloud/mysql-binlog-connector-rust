@@ -39,9 +39,9 @@ impl BufExt for Vec<u8> {
     }
 
     fn to_utf8_string(self) -> String {
-        if let Ok(str) = String::from_utf8(self.clone()) {
-            return str;
+        match String::from_utf8(self) {
+            Ok(str) => str,
+            Err(err) => String::from_utf8_lossy(err.as_bytes()).to_string(),
         }
-        String::from_utf8_lossy(&self).to_string()
     }
 }

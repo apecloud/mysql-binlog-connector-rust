@@ -34,8 +34,8 @@ const HEX_CODES: [char; 16] = [
 ];
 
 impl JsonStringFormatter {
-    pub fn get_string(&self) -> String {
-        self.sb.clone()
+    pub fn into_string(self) -> String {
+        self.sb
     }
 
     fn append_string(&mut self, original: &str) {

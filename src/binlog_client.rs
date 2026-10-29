@@ -18,6 +18,7 @@ pub enum StartPosition {
 #[derive(Default)]
 pub struct BinlogClient {
     /// MySQL server connection URL in format "mysql://user:password@host:port"
+    /// For an empty-password account, use "mysql://user@host:port" or "mysql://user:@host:port".
     pub url: String,
     /// Name of the binlog file to start replication from, e.g. "mysql-bin.000001"
     /// Only used when gtid_enabled is false

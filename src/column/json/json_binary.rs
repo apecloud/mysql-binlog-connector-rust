@@ -26,7 +26,7 @@ impl JsonBinary<'_> {
 
         let mut formatter = JsonStringFormatter::default();
         Self::parse(bytes, &mut formatter)?;
-        Ok(formatter.get_string())
+        Ok(formatter.into_string())
     }
 
     pub fn parse<F: JsonFormatter>(bytes: &[u8], formatter: &mut F) -> Result<(), BinlogError> {
