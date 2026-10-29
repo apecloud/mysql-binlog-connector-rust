@@ -148,7 +148,7 @@ impl BinlogParser {
 
             EventType::Rotate => Ok((header, EventData::Rotate(RotateEvent::parse(&mut cursor)?))),
 
-            EventType::HeartBeat => Ok((header, EventData::HeartBeat)),
+            EventType::HeartBeat | EventType::HeartBeatV2 => Ok((header, EventData::HeartBeat)),
 
             _ => Ok((header, EventData::NotSupported)),
         }

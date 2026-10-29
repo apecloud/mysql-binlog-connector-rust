@@ -46,6 +46,7 @@ pub enum EventType {
     XaPrepare = 38,
     PartialUpdateRowsEvent = 39,
     TransactionPayload = 40,
+    HeartBeatV2 = 41,
     AnnotateRows = 160,
     BinlogCheckpoint = 161,
     MariadbGtid = 162,
