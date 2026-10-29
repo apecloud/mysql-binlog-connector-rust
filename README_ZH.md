@@ -38,6 +38,12 @@
 
 - 更多细节, 参考: [mysql doc](https://dev.mysql.com/doc/dev/mysql-server/latest/page_protocol_replication_binlog_event.html)
 
+### 连接 URL
+
+使用 `mysql://user:password@host:port`。对于配置为空密码的账号，支持
+`mysql://user@host:port` 和 `mysql://user:@host:port` 两种写法，适用于
+`mysql_native_password` 和 `caching_sha2_password`。服务端仍会校验账号和权限。
+
 ### mysql 数据类型和 rust 数据类型映射
 
 | mysql column type                                                   | binlog column type(raw)     | binlog column type(parsed from binlog column meta) | rust type                          |

@@ -18,7 +18,11 @@ pub struct AuthSha2PasswordCommand {
 }
 
 impl AuthSha2PasswordCommand {
+    /// Authentication response shared by the handshake and auth plugin switch.
     pub fn encrypted_password(&mut self) -> Result<Vec<u8>, BinlogError> {
+        if self.password.is_empty() {
+            return Ok(vec![0]);
+        }
         let encrypted_password = Self::encrypt_password_sha256(&self.password, &self.scramble)?;
         Ok(encrypted_password)
     }
@@ -44,7 +48,7 @@ impl AuthSha2PasswordCommand {
         buf.write_null_terminated_string(&self.username)?;
 
         // encrypted password
-        let encrypted_password = Self::encrypt_password_sha256(&self.password, &self.scramble)?;
+        let encrypted_password = self.encrypted_password()?;
         buf.write_u8(encrypted_password.len() as u8)?;
         buf.write_all(&encrypted_password)?;
 
@@ -72,5 +76,44 @@ impl AuthSha2PasswordCommand {
         let mut hasher = Sha256::new();
         hasher.update(value);
         hasher.finalize().as_slice().to_vec()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::AuthSha2PasswordCommand;
+    use crate::constants::ClientCapabilities;
+
+    #[test]
+    fn encodes_password_responses_for_handshake_and_switch() {
+        // Non-empty response independently calculated from the SHA256 scramble formula.
+        for (password, expected) in [
+            ("", vec![0]),
+            (
+                "example",
+                vec![
+                    0x00, 0x39, 0xd2, 0xfa, 0xb1, 0x1d, 0xbb, 0x6c, 0x95, 0x4e, 0xb5, 0x8d, 0x0b,
+                    0x35, 0x7a, 0xe6, 0xe9, 0x76, 0x1b, 0x0f, 0x1e, 0x73, 0x7a, 0xe8, 0x88, 0x5c,
+                    0x4b, 0x4f, 0xde, 0x55, 0xec, 0xde,
+                ],
+            ),
+        ] {
+            let mut command = AuthSha2PasswordCommand {
+                schema: "test".into(),
+                username: "user".into(),
+                password: password.into(),
+                scramble: "12345678901234567890".into(),
+                collation: 45,
+                client_capabilities: ClientCapabilities::SECURE_CONNECTION
+                    | ClientCapabilities::CONNECT_WITH_DB,
+            };
+            assert_eq!(command.encrypted_password().unwrap(), expected);
+
+            let mut expected_tail = vec![expected.len() as u8];
+            expected_tail.extend_from_slice(&expected);
+            expected_tail.extend_from_slice(b"test\0caching_sha2_password\0");
+            let packet = command.to_bytes().unwrap();
+            assert_eq!(&packet[32 + b"user\0".len()..], expected_tail);
+        }
     }
 }

@@ -56,6 +56,7 @@ enum ChannelStream {
 pub struct PacketChannel {
     stream: Option<ChannelStream>,
     timeout_secs: u64,
+    server_version: Option<String>,
 }
 
 pub struct KeepAliveConfig {
@@ -144,7 +145,16 @@ impl PacketChannel {
         Ok(Self {
             stream: Some(ChannelStream::Plain(stream)),
             timeout_secs,
+            server_version: None,
         })
+    }
+
+    pub(crate) fn set_server_version(&mut self, version: String) {
+        self.server_version = Some(version);
+    }
+
+    pub(crate) fn server_version(&self) -> Option<&str> {
+        self.server_version.as_deref()
     }
 
     /// Configure TCP keepalive settings for the stream

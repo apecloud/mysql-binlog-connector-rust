@@ -54,16 +54,36 @@ impl CommandUtil {
     pub async fn fetch_binlog_info(
         channel: &mut PacketChannel,
     ) -> Result<(String, u32, String), BinlogError> {
-        let result_sets = Self::execute_query(channel, "show master status").await?;
-        if result_sets.is_empty() {
-            return Err(BinlogError::ConnectError(
-                "failed to fetch binlog filename and position".into(),
-            ));
-        }
-        let binlog_filename = result_sets[0].values[0].clone();
-        let binlog_position = result_sets[0].values[1].clone().parse::<u32>()?;
-        let gtid_set = result_sets[0].values[4].clone();
+        let server_version = channel.server_version().ok_or_else(|| {
+            BinlogError::ConnectError("missing server version in mysql greeting".into())
+        })?;
+        let query = Self::binlog_status_query(server_version)?;
+        let result_sets = Self::execute_query(channel, query).await?;
+        let row = result_sets
+            .first()
+            .filter(|row| row.values.len() >= 5)
+            .ok_or_else(|| {
+                BinlogError::ConnectError("failed to fetch binlog filename and position".into())
+            })?;
+        let binlog_filename = row.values[0].clone();
+        let binlog_position = row.values[1].clone().parse::<u32>()?;
+        let gtid_set = row.values[4].clone();
         Ok((binlog_filename, binlog_position, gtid_set))
+    }
+
+    fn binlog_status_query(server_version: &str) -> Result<&'static str, BinlogError> {
+        let mut parts = server_version.split('.');
+        let major = parts.next().and_then(|part| part.parse::<u16>().ok());
+        let minor = parts.next().and_then(|part| part.parse::<u16>().ok());
+        match (major, minor) {
+            // SHOW MASTER STATUS was removed in MySQL 8.4.
+            (Some(major), Some(minor)) if (major, minor) >= (8, 4) => Ok("show binary log status"),
+            (Some(_), Some(_)) => Ok("show master status"),
+            _ => Err(BinlogError::ConnectError(format!(
+                "invalid mysql server version: {}",
+                server_version
+            ))),
+        }
     }
 
     pub async fn fetch_binlog_checksum(
@@ -142,5 +162,29 @@ impl CommandUtil {
             )));
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::CommandUtil;
+
+    #[test]
+    fn selects_binlog_status_query_by_numeric_version() {
+        for version in ["5.6.51", "5.7.44-log", "8.0.33", "8.3.0"] {
+            assert_eq!(
+                CommandUtil::binlog_status_query(version).unwrap(),
+                "show master status"
+            );
+        }
+        for version in ["8.4.0", "8.4.13-commercial", "8.10.0", "9.0.0"] {
+            assert_eq!(
+                CommandUtil::binlog_status_query(version).unwrap(),
+                "show binary log status"
+            );
+        }
+        for version in ["", "unknown", "8", "8.x.0"] {
+            assert!(CommandUtil::binlog_status_query(version).is_err());
+        }
     }
 }
