@@ -21,7 +21,7 @@ pub struct TableMapEvent {
 }
 
 impl TableMapEvent {
-    pub fn parse(cursor: &mut Cursor<&Vec<u8>>) -> Result<Self, BinlogError> {
+    pub fn parse(cursor: &mut Cursor<impl AsRef<[u8]>>) -> Result<Self, BinlogError> {
         // refer: https://dev.mysql.com/doc/dev/mysql-server/latest/classbinary__log_1_1Table__map__event.html
         // table_id
         let table_id = cursor.read_u48::<LittleEndian>()?;
@@ -71,7 +71,7 @@ impl TableMapEvent {
     }
 
     fn read_metadatas(
-        cursor: &mut Cursor<&Vec<u8>>,
+        cursor: &mut Cursor<impl AsRef<[u8]>>,
         column_types: &Vec<u8>,
     ) -> Result<Vec<u16>, BinlogError> {
         let mut column_metadatas = Vec::with_capacity(column_types.len());

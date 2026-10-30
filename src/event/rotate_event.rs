@@ -12,9 +12,10 @@ pub struct RotateEvent {
 }
 
 impl RotateEvent {
-    pub fn parse(cursor: &mut Cursor<&Vec<u8>>) -> Result<Self, BinlogError> {
+    pub fn parse(cursor: &mut Cursor<impl AsRef<[u8]>>) -> Result<Self, BinlogError> {
         let binlog_position = cursor.read_u64::<LittleEndian>()?;
-        let binlog_filename = cursor.read_string_without_terminator(cursor.get_ref().len() - 8)?;
+        let binlog_filename =
+            cursor.read_string_without_terminator(cursor.get_ref().as_ref().len() - 8)?;
         Ok(Self {
             binlog_filename,
             binlog_position,

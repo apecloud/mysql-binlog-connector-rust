@@ -44,7 +44,36 @@ impl BinlogParser {
             - self.checksum_length as usize;
 
         let buf = self.read_event_data(stream, data_length)?;
-        let mut cursor = Cursor::new(&buf);
+        self.parse_body(header, &buf)
+    }
+
+    /// Parse a buffered event without copying its body.
+    pub(crate) fn next_slice(
+        &mut self,
+        event: &[u8],
+    ) -> Result<(EventHeader, EventData), BinlogError> {
+        let header = EventHeader::parse(&mut Cursor::new(event))?;
+        let event_length = header.event_length as usize;
+        let header_length = constants::EVENT_HEADER_LENGTH;
+        let checksum_length = self.checksum_length as usize;
+
+        if event_length < header_length + checksum_length || event_length > event.len() {
+            return Err(BinlogError::UnexpectedData(
+                "invalid binlog event length".into(),
+            ));
+        }
+
+        let body = &event[header_length..event_length - checksum_length];
+        self.parse_body(header, body)
+    }
+
+    fn parse_body(
+        &mut self,
+        header: EventHeader,
+        body: &[u8],
+    ) -> Result<(EventHeader, EventData), BinlogError> {
+        let data_length = body.len();
+        let mut cursor = Cursor::new(body);
 
         let event_type = EventType::from_code(header.event_type);
         match event_type {
@@ -60,6 +89,11 @@ impl BinlogParser {
             )),
 
             EventType::Gtid => Ok((header, EventData::Gtid(GtidEvent::parse(&mut cursor)?))),
+
+            EventType::GtidTagged => Ok((
+                header,
+                EventData::Gtid(GtidEvent::parse_tagged(&mut cursor)?),
+            )),
 
             EventType::Query => Ok((header, EventData::Query(QueryEvent::parse(&mut cursor)?))),
 
@@ -119,7 +153,7 @@ impl BinlogParser {
 
             EventType::Rotate => Ok((header, EventData::Rotate(RotateEvent::parse(&mut cursor)?))),
 
-            EventType::HeartBeat => Ok((header, EventData::HeartBeat)),
+            EventType::HeartBeat | EventType::HeartBeatV2 => Ok((header, EventData::HeartBeat)),
 
             _ => Ok((header, EventData::NotSupported)),
         }
@@ -142,6 +176,63 @@ impl BinlogParser {
         match event_type {
             EventType::ExtWriteRows | EventType::ExtUpdateRows | EventType::ExtDeleteRows => 2,
             _ => 1,
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_file_and_slice_parsers_match() {
+        for file in [
+            include_bytes!("../tests/parse_file_tests/mysql-bin.000056").as_slice(),
+            include_bytes!("../tests/parse_file_tests/mysql-bin.000057").as_slice(),
+            include_bytes!("../tests/parse_file_tests/mysql-bin.000080").as_slice(),
+            include_bytes!("../tests/parse_file_tests/mysql-bin.000084").as_slice(),
+            include_bytes!("../tests/parse_file_tests/mysql-bin.000084-compressed").as_slice(),
+            include_bytes!("../tests/parse_file_tests/mysql-bin.000084-no-checksum").as_slice(),
+        ] {
+            let new_parser = || BinlogParser {
+                checksum_length: 4,
+                table_map_event_by_table_id: HashMap::new(),
+            };
+            let mut reader = new_parser();
+            let mut slice_reader = new_parser();
+            let mut cursor = Cursor::new(file);
+            reader.check_magic(&mut cursor).unwrap();
+            while cursor.position() < file.len() as u64 {
+                let start = cursor.position() as usize;
+                let event = reader.next(&mut cursor).unwrap();
+                let end = cursor.position() as usize;
+                let slice_event = slice_reader.next_slice(&file[start..end]).unwrap();
+                assert_eq!(
+                    serde_json::to_value(event).unwrap(),
+                    serde_json::to_value(slice_event).unwrap()
+                );
+            }
+            assert_eq!(cursor.position(), file.len() as u64);
+        }
+    }
+
+    #[test]
+    fn test_anonymous_gtid_and_non_gtid_events_keep_existing_behavior() {
+        let mut parser = BinlogParser {
+            checksum_length: 0,
+            table_map_event_by_table_id: HashMap::new(),
+        };
+        for kind in [34, 27] {
+            let mut event = vec![0; 19];
+            event[4] = kind;
+            event[9] = 19;
+            let (header, data) = parser.next_slice(&event).unwrap();
+            assert_eq!(header.event_type, kind);
+            if kind == 34 {
+                assert!(matches!(data, EventData::NotSupported));
+            } else {
+                assert!(matches!(data, EventData::HeartBeat));
+            }
         }
     }
 }

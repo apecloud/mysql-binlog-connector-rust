@@ -26,7 +26,7 @@ impl BinlogStream {
         }
 
         // parse events, execute the callback
-        self.parser.next(&mut cursor)
+        self.parser.next_slice(&buf[cursor.position() as usize..])
     }
 
     pub async fn close(&mut self) -> Result<(), BinlogError> {

@@ -15,7 +15,7 @@ pub struct QueryEvent {
 }
 
 impl QueryEvent {
-    pub fn parse(cursor: &mut Cursor<&Vec<u8>>) -> Result<Self, BinlogError> {
+    pub fn parse(cursor: &mut Cursor<impl AsRef<[u8]>>) -> Result<Self, BinlogError> {
         // refer: https://dev.mysql.com/doc/dev/mysql-server/latest/classbinary__log_1_1Query__event.html
         // Post-Header for Query_event
         let thread_id = cursor.read_u32::<LittleEndian>()?;

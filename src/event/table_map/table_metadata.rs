@@ -59,7 +59,7 @@ pub struct TableMetadata {
 
 impl TableMetadata {
     pub fn parse(
-        cursor: &mut Cursor<&Vec<u8>>,
+        cursor: &mut Cursor<impl AsRef<[u8]>>,
         column_types: &[u8],
         column_metas: &[u16],
     ) -> Result<Self, BinlogError> {
@@ -134,7 +134,9 @@ impl TableMetadata {
     }
 }
 
-fn parse_default_charset(cursor: &mut Cursor<&Vec<u8>>) -> Result<DefaultCharset, BinlogError> {
+fn parse_default_charset(
+    cursor: &mut Cursor<impl AsRef<[u8]>>,
+) -> Result<DefaultCharset, BinlogError> {
     let default_collation = cursor.read_packed_number()?;
     let mut charset_collations = Vec::new();
     while cursor.available() > 0 {
@@ -149,7 +151,7 @@ fn parse_default_charset(cursor: &mut Cursor<&Vec<u8>>) -> Result<DefaultCharset
 }
 
 pub(crate) fn read_bitmap_reverted(
-    cursor: &mut Cursor<&Vec<u8>>,
+    cursor: &mut Cursor<impl AsRef<[u8]>>,
     bits_number: usize,
 ) -> Result<Vec<bool>, BinlogError> {
     let mut result = vec![false; bits_number];
@@ -172,7 +174,7 @@ pub(crate) fn read_bitmap_reverted(
 // Helper functions for applying metadata to columns
 
 fn read_signedness_bitmap(
-    cursor: &mut Cursor<&Vec<u8>>,
+    cursor: &mut Cursor<impl AsRef<[u8]>>,
     column_types: &[u8],
 ) -> Result<Vec<bool>, BinlogError> {
     let count = get_numeric_column_count(column_types)?;
@@ -196,7 +198,7 @@ fn apply_signedness_to_columns(
 
 fn parse_column_charsets(
     columns: &mut [ColumnMetadata],
-    cursor: &mut Cursor<&Vec<u8>>,
+    cursor: &mut Cursor<impl AsRef<[u8]>>,
 ) -> Result<(), BinlogError> {
     let mut index = 0;
     while cursor.available() > 0 && index < columns.len() {
@@ -209,7 +211,7 @@ fn parse_column_charsets(
 
 fn parse_column_names(
     columns: &mut [ColumnMetadata],
-    cursor: &mut Cursor<&Vec<u8>>,
+    cursor: &mut Cursor<impl AsRef<[u8]>>,
 ) -> Result<(), BinlogError> {
     let mut index = 0;
     while cursor.available() > 0 && index < columns.len() {
@@ -223,7 +225,7 @@ fn parse_column_names(
 
 fn parse_set_string_values(
     columns: &mut [ColumnMetadata],
-    cursor: &mut Cursor<&Vec<u8>>,
+    cursor: &mut Cursor<impl AsRef<[u8]>>,
     column_types: &[u8],
     column_metas: &[u16],
 ) -> Result<(), BinlogError> {
@@ -257,7 +259,7 @@ fn parse_set_string_values(
 
 fn parse_enum_string_values(
     columns: &mut [ColumnMetadata],
-    cursor: &mut Cursor<&Vec<u8>>,
+    cursor: &mut Cursor<impl AsRef<[u8]>>,
     column_types: &[u8],
     column_metas: &[u16],
 ) -> Result<(), BinlogError> {
@@ -291,7 +293,7 @@ fn parse_enum_string_values(
 
 fn parse_geometry_types(
     columns: &mut [ColumnMetadata],
-    cursor: &mut Cursor<&Vec<u8>>,
+    cursor: &mut Cursor<impl AsRef<[u8]>>,
 ) -> Result<(), BinlogError> {
     let mut index = 0;
     while cursor.available() > 0 && index < columns.len() {
@@ -304,7 +306,7 @@ fn parse_geometry_types(
 
 fn parse_simple_primary_keys(
     columns: &mut [ColumnMetadata],
-    cursor: &mut Cursor<&Vec<u8>>,
+    cursor: &mut Cursor<impl AsRef<[u8]>>,
 ) -> Result<(), BinlogError> {
     while cursor.available() > 0 {
         let pk_column = cursor.read_packed_number()?;
@@ -317,7 +319,7 @@ fn parse_simple_primary_keys(
 
 fn parse_primary_key_prefixes(
     columns: &mut [ColumnMetadata],
-    cursor: &mut Cursor<&Vec<u8>>,
+    cursor: &mut Cursor<impl AsRef<[u8]>>,
 ) -> Result<(), BinlogError> {
     while cursor.available() > 0 {
         let column_index = cursor.read_packed_number()?;
@@ -331,7 +333,7 @@ fn parse_primary_key_prefixes(
 
 fn parse_enum_set_charsets(
     columns: &mut [ColumnMetadata],
-    cursor: &mut Cursor<&Vec<u8>>,
+    cursor: &mut Cursor<impl AsRef<[u8]>>,
 ) -> Result<(), BinlogError> {
     let mut index = 0;
     while cursor.available() > 0 && index < columns.len() {
