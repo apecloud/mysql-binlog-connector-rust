@@ -15,7 +15,7 @@ pub struct XaPrepareEvent {
 
 impl XaPrepareEvent {
     // refer: https://github.com/mysql/mysql-server/blob/5.7/libbinlogevents/src/control_events.cpp#L590
-    pub fn parse(cursor: &mut Cursor<&Vec<u8>>) -> Result<Self, BinlogError> {
+    pub fn parse(cursor: &mut Cursor<impl AsRef<[u8]>>) -> Result<Self, BinlogError> {
         let one_phase = cursor.read_u8()? == 0;
         let format_id = cursor.read_u32::<LittleEndian>()?;
         let gtrid_length = cursor.read_u32::<LittleEndian>()?;

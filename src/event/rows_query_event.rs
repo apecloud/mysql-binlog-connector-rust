@@ -10,12 +10,12 @@ pub struct RowsQueryEvent {
 }
 
 impl RowsQueryEvent {
-    pub fn parse(cursor: &mut Cursor<&Vec<u8>>) -> Result<Self, BinlogError> {
+    pub fn parse(cursor: &mut Cursor<impl AsRef<[u8]>>) -> Result<Self, BinlogError> {
         // refer: https://dev.mysql.com/doc/dev/mysql-server/latest/classbinary__log_1_1Rows__query__event.html
         // query length is stored using one byte, but it is ignored and the left bytes contain the full query
         cursor.seek(SeekFrom::Current(1))?;
 
-        let query = cursor.read_string(cursor.get_ref().len() - 1)?;
+        let query = cursor.read_string(cursor.get_ref().as_ref().len() - 1)?;
         Ok(Self { query })
     }
 }

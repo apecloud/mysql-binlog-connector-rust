@@ -16,7 +16,7 @@ pub struct TransactionPayloadEvent {
 }
 
 impl TransactionPayloadEvent {
-    pub fn parse(cursor: &mut Cursor<&Vec<u8>>) -> Result<Self, BinlogError> {
+    pub fn parse(cursor: &mut Cursor<impl AsRef<[u8]>>) -> Result<Self, BinlogError> {
         // refer: https://dev.mysql.com/doc/refman/8.0/en/binary-log-transaction-compression.html
         let (_compress_type, uncompressed_size) = Self::parse_meta(cursor)?;
 
@@ -25,7 +25,7 @@ impl TransactionPayloadEvent {
         zstd::stream::copy_decode(cursor, &mut uncompressed_payload)?;
 
         // construct a new parser from the payload
-        let mut payload_cursor = Cursor::new(uncompressed_payload);
+        let mut payload = uncompressed_payload.as_slice();
         let mut parser = BinlogParser {
             checksum_length: 0,
             table_map_event_by_table_id: HashMap::new(),
@@ -33,7 +33,8 @@ impl TransactionPayloadEvent {
 
         // parse events in payload
         let mut uncompressed_events: Vec<(EventHeader, EventData)> = Vec::new();
-        while let Ok(e) = parser.next(&mut payload_cursor) {
+        while let Ok(e) = parser.next_slice(payload) {
+            payload = &payload[e.0.event_length as usize..];
             uncompressed_events.push(e);
         }
 
@@ -43,7 +44,7 @@ impl TransactionPayloadEvent {
         })
     }
 
-    fn parse_meta(cursor: &mut Cursor<&Vec<u8>>) -> Result<(usize, usize), BinlogError> {
+    fn parse_meta(cursor: &mut Cursor<impl AsRef<[u8]>>) -> Result<(usize, usize), BinlogError> {
         let mut payload_size = 0;
         let mut compress_type = 0;
         let mut uncompressed_size = 0;

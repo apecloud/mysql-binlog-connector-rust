@@ -21,9 +21,12 @@ async fn dump_and_parse() {
     dotenv::from_path(env_path).unwrap();
     let url = env::var("db_url").unwrap();
     let server_id: u64 = env::var("server_id").unwrap().parse().unwrap();
-    let binlog_filename = env::var("binlog_filename").unwrap();
-    let binlog_position: u32 = env::var("binlog_position").unwrap().parse().unwrap();
-    let gtid_set = env::var("gtid_set").unwrap();
+    let binlog_filename = env::var("binlog_filename").unwrap_or_default();
+    let binlog_position: u32 = env::var("binlog_position")
+        .unwrap_or_default()
+        .parse()
+        .unwrap_or_default();
+    let gtid_set = env::var("gtid_set").unwrap_or_default();
 
     let start_position = if !gtid_set.is_empty() {
         StartPosition::Gtid(gtid_set)

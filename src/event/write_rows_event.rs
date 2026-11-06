@@ -15,7 +15,7 @@ pub struct WriteRowsEvent {
 
 impl WriteRowsEvent {
     pub fn parse(
-        cursor: &mut Cursor<&Vec<u8>>,
+        cursor: &mut Cursor<impl AsRef<[u8]>>,
         table_map_event_by_table_id: &mut HashMap<u64, TableMapEvent>,
         row_event_version: u8,
     ) -> Result<Self, BinlogError> {

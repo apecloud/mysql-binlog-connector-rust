@@ -61,7 +61,7 @@ const COMPRESSED_BYTES: [usize; 10] = [0, 1, 1, 2, 2, 3, 3, 4, 4, 4];
 impl ColumnValue {
     // refer: https://mariadb.com/kb/en/rows_event_v1v2-rows_compressed_event_v1/
     pub fn parse(
-        cursor: &mut Cursor<&Vec<u8>>,
+        cursor: &mut Cursor<impl AsRef<[u8]>>,
         column_type: ColumnType,
         column_meta: u16,
         column_length: u16,
@@ -143,7 +143,10 @@ impl ColumnValue {
     }
 
     #[allow(clippy::needless_range_loop)]
-    fn parse_bit(cursor: &mut Cursor<&Vec<u8>>, column_meta: u16) -> Result<u64, BinlogError> {
+    fn parse_bit(
+        cursor: &mut Cursor<impl AsRef<[u8]>>,
+        column_meta: u16,
+    ) -> Result<u64, BinlogError> {
         let bit_count = (column_meta >> 8) * 8 + (column_meta & 0xFF);
         let bytes = cursor.read_bits_as_bytes(bit_count as usize, true)?;
         let mut result = 0u64;
@@ -153,7 +156,7 @@ impl ColumnValue {
         Ok(result)
     }
 
-    fn parse_date(cursor: &mut Cursor<&Vec<u8>>) -> Result<String, BinlogError> {
+    fn parse_date(cursor: &mut Cursor<impl AsRef<[u8]>>) -> Result<String, BinlogError> {
         // Stored as a 3 byte value where bits 1 to 5 store the day,
         // bits 6 to 9 store the month and the remaining bits store the year.
         let date_val = cursor.read_u24::<LittleEndian>()?;
@@ -163,7 +166,7 @@ impl ColumnValue {
         Ok(format!("{}-{:02}-{:02}", year, month, day))
     }
 
-    fn parse_time(cursor: &mut Cursor<&Vec<u8>>) -> Result<String, BinlogError> {
+    fn parse_time(cursor: &mut Cursor<impl AsRef<[u8]>>) -> Result<String, BinlogError> {
         // refer: https://dev.mysql.com/doc/refman/8.0/en/time.html
         let time_val = cursor.read_u24::<LittleEndian>()?;
         let hour = (time_val / 100) / 100;
@@ -172,7 +175,10 @@ impl ColumnValue {
         Ok(format!("{:02}:{:02}:{:02}", hour, minute, second))
     }
 
-    fn parse_time2(cursor: &mut Cursor<&Vec<u8>>, column_meta: u16) -> Result<String, BinlogError> {
+    fn parse_time2(
+        cursor: &mut Cursor<impl AsRef<[u8]>>,
+        column_meta: u16,
+    ) -> Result<String, BinlogError> {
         // (in big endian)
 
         // 1 bit sign (1= non-negative, 0= negative)
@@ -221,7 +227,10 @@ impl ColumnValue {
         }
     }
 
-    fn parse_fraction(cursor: &mut Cursor<&Vec<u8>>, column_meta: u16) -> Result<u32, BinlogError> {
+    fn parse_fraction(
+        cursor: &mut Cursor<impl AsRef<[u8]>>,
+        column_meta: u16,
+    ) -> Result<u32, BinlogError> {
         let mut fraction = 0;
         let length = ((column_meta + 1) / 2) as u32;
         if length > 0 {
@@ -231,13 +240,13 @@ impl ColumnValue {
         Ok(fraction as u32)
     }
 
-    fn parse_timestamp(cursor: &mut Cursor<&Vec<u8>>) -> Result<i64, BinlogError> {
+    fn parse_timestamp(cursor: &mut Cursor<impl AsRef<[u8]>>) -> Result<i64, BinlogError> {
         // Stored as a 4 byte UNIX timestamp (number of seconds since 00:00, Jan 1 1970 UTC).
         Ok((cursor.read_u32::<LittleEndian>()?) as i64 * 1000000)
     }
 
     fn parse_timestamp2(
-        cursor: &mut Cursor<&Vec<u8>>,
+        cursor: &mut Cursor<impl AsRef<[u8]>>,
         column_meta: u16,
     ) -> Result<i64, BinlogError> {
         let second = cursor.read_u32::<BigEndian>()?;
@@ -245,7 +254,7 @@ impl ColumnValue {
         Ok(1000000 * second as i64 + micros as i64)
     }
 
-    fn parse_datetime(cursor: &mut Cursor<&Vec<u8>>) -> Result<String, BinlogError> {
+    fn parse_datetime(cursor: &mut Cursor<impl AsRef<[u8]>>) -> Result<String, BinlogError> {
         let datetime_val = cursor.read_u64::<LittleEndian>()? * 1000;
         let date_val = datetime_val / 1000000;
         let time_val = datetime_val % 1000000;
@@ -262,7 +271,7 @@ impl ColumnValue {
     }
 
     fn parse_datetime2(
-        cursor: &mut Cursor<&Vec<u8>>,
+        cursor: &mut Cursor<impl AsRef<[u8]>>,
         column_meta: u16,
     ) -> Result<String, BinlogError> {
         // Stored as 4-byte value,
@@ -286,7 +295,7 @@ impl ColumnValue {
     }
 
     fn parse_string(
-        cursor: &mut Cursor<&Vec<u8>>,
+        cursor: &mut Cursor<impl AsRef<[u8]>>,
         column_meta: u16,
     ) -> Result<Vec<u8>, BinlogError> {
         let size = if column_meta < 256 {
@@ -298,14 +307,17 @@ impl ColumnValue {
         cursor.read_bytes(size)
     }
 
-    fn parse_blob(cursor: &mut Cursor<&Vec<u8>>, column_meta: u16) -> Result<Vec<u8>, BinlogError> {
+    fn parse_blob(
+        cursor: &mut Cursor<impl AsRef<[u8]>>,
+        column_meta: u16,
+    ) -> Result<Vec<u8>, BinlogError> {
         let size = cursor.read_uint::<LittleEndian>(column_meta as usize)? as usize;
         cursor.read_bytes(size)
     }
 
     #[allow(clippy::needless_range_loop)]
     pub fn parse_decimal(
-        cursor: &mut Cursor<&Vec<u8>>,
+        cursor: &mut Cursor<impl AsRef<[u8]>>,
         precision: usize,
         scale: usize,
     ) -> Result<String, BinlogError> {

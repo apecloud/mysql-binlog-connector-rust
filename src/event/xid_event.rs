@@ -11,7 +11,7 @@ pub struct XidEvent {
 }
 
 impl XidEvent {
-    pub fn parse(cursor: &mut Cursor<&Vec<u8>>) -> Result<Self, BinlogError> {
+    pub fn parse(cursor: &mut Cursor<impl AsRef<[u8]>>) -> Result<Self, BinlogError> {
         Ok(XidEvent {
             xid: cursor.read_u64::<LittleEndian>()?,
         })

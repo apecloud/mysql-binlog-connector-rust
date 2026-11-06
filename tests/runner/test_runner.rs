@@ -11,15 +11,16 @@ pub(crate) mod test {
         binlog_error::BinlogError,
         command::{authenticator::Authenticator, command_util::CommandUtil},
         event::{
-            delete_rows_event::DeleteRowsEvent, event_data::EventData, query_event::QueryEvent,
-            table_map_event::TableMapEvent, update_rows_event::UpdateRowsEvent,
-            write_rows_event::WriteRowsEvent,
+            delete_rows_event::DeleteRowsEvent, event_data::EventData, gtid_event::GtidEvent,
+            query_event::QueryEvent, table_map_event::TableMapEvent,
+            update_rows_event::UpdateRowsEvent, write_rows_event::WriteRowsEvent,
         },
     };
 
     use crate::runner::{env::test::Env, mock::test::Mock};
 
     pub struct TestRunner {
+        pub gtid_events: Vec<GtidEvent>,
         pub insert_events: Vec<WriteRowsEvent>,
         pub update_events: Vec<UpdateRowsEvent>,
         pub delete_events: Vec<DeleteRowsEvent>,
@@ -38,6 +39,7 @@ pub(crate) mod test {
             // load environment variables
             let env = Env::load_vars();
             let runner = TestRunner {
+                gtid_events: Vec::new(),
                 insert_events: Vec::new(),
                 update_events: Vec::new(),
                 delete_events: Vec::new(),
@@ -138,6 +140,7 @@ pub(crate) mod test {
 
             for data in all_events.lock().unwrap().to_vec() {
                 match data {
+                    EventData::Gtid(event) => self.gtid_events.push(event),
                     EventData::WriteRows(event) => {
                         self.insert_events.push(event);
                     }

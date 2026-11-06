@@ -15,7 +15,10 @@ pub struct FormatDescriptionEvent {
 }
 
 impl FormatDescriptionEvent {
-    pub fn parse(cursor: &mut Cursor<&Vec<u8>>, data_length: usize) -> Result<Self, BinlogError> {
+    pub fn parse(
+        cursor: &mut Cursor<impl AsRef<[u8]>>,
+        data_length: usize,
+    ) -> Result<Self, BinlogError> {
         // refer: https://dev.mysql.com/doc/dev/mysql-server/latest/classbinary__log_1_1Format__description__event.html
         // binlog_version: 2 bytes
         let binlog_version = cursor.read_u16::<LittleEndian>()?;

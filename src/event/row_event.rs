@@ -18,7 +18,7 @@ pub struct RowEvent {
 impl RowEvent {
     #[allow(clippy::needless_range_loop)]
     pub fn parse(
-        cursor: &mut Cursor<&Vec<u8>>,
+        cursor: &mut Cursor<impl AsRef<[u8]>>,
         table_map_event: &TableMapEvent,
         included_columns: &[bool],
     ) -> Result<Self, BinlogError> {
